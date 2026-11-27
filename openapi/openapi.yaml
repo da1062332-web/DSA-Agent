@@ -142,7 +142,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a168
+          enum: &a170
             - ACTIVE
             - SUSPENDED
             - OFFBOARDING
@@ -334,7 +334,7 @@ components:
               attributes:
                 type: object
                 additionalProperties: {}
-                default: &a169 {}
+                default: &a171 {}
             required:
               - code
               - label
@@ -608,7 +608,7 @@ components:
       properties:
         decision:
           type: string
-          enum: &a171
+          enum: &a173
             - APPROVED
             - DENIED
         comments:
@@ -713,7 +713,7 @@ components:
       properties:
         decision:
           type: string
-          enum: &a172
+          enum: &a174
             - APPROVED
             - REJECTED
         comments:
@@ -780,7 +780,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a170
+          enum: &a172
             - CANDIDATE
             - STAGING
             - PUBLISHED
@@ -2300,7 +2300,7 @@ components:
           type: string
         purpose:
           type: string
-          enum: &a152
+          enum: &a154
             - CONTACT
             - LOAN_PROCESSING
             - SHARE_WITH_LENDER
@@ -3438,6 +3438,9 @@ paths:
                             - security.read
                             - privacy.read
                             - import.read
+                            - lender_policy.read
+                            - lender_policy.manage
+                            - lender_match.run
                         scope:
                           type: string
                           enum:
@@ -11342,7 +11345,7 @@ paths:
                     pattern: ^adj_[0-9A-HJKMNP-TV-Z]{26}$
                   adjustmentType:
                     type: string
-                    enum: &a176
+                    enum: &a178
                       - WRITE_OFF
                       - CLAWBACK
                       - CORRECTION
@@ -23575,9 +23578,2309 @@ paths:
                       - retryable
                 required:
                   - error
+  /v1/lender-policies:
+    get:
+      operationId: API-LND-POL-001
+      summary: List lender policy versions (lender_policy.read); filters lenderId, productVersionId, status
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+          required: false
+          name: lenderId
+          in: query
+        - schema:
+            type: string
+            pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+          required: false
+          name: productVersionId
+          in: query
+        - schema:
+            type: string
+            enum: &a104
+              - DRAFT
+              - ACTIVE
+              - RETIRED
+          required: false
+          name: status
+          in: query
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^lpo_[0-9A-HJKMNP-TV-Z]{26}$
+                        lenderId:
+                          type: string
+                          pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                        productVersionId:
+                          type: string
+                          pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                        status:
+                          type: string
+                          enum: *a104
+                        versionNo:
+                          type: integer
+                          minimum: 1
+                        minBureauScore:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 300
+                          maximum: 900
+                        minAge:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 18
+                          maximum: 100
+                        maxAgeAtMaturity:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 18
+                          maximum: 100
+                        minIncome:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        foirCapBps:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 1
+                          maximum: 10000
+                        ltvCapBps:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 1
+                          maximum: 10000
+                        rateMinBps:
+                          type: integer
+                          minimum: 0
+                          maximum: 10000
+                        rateMaxBps:
+                          type: integer
+                          minimum: 0
+                          maximum: 10000
+                        processingFeeBps:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                          maximum: 10000
+                        serviceablePincodes:
+                          type: array
+                          items:
+                            type: string
+                            pattern: ^[1-9][0-9]{1,5}$
+                          maxItems: 2000
+                        allowedConstitutions:
+                          type: array
+                          items:
+                            type: string
+                            pattern: ^[A-Z][A-Z_]{1,39}$
+                          maxItems: 20
+                        allowedEmployment:
+                          type: array
+                          items:
+                            type: string
+                            enum: &a105
+                              - SALARIED
+                              - SELF_EMPLOYED_PROFESSIONAL
+                              - SELF_EMPLOYED_BUSINESS
+                              - NON_INDIVIDUAL
+                          maxItems: 4
+                        minVintageMonths:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                          maximum: 1200
+                        documentProfileId:
+                          type:
+                            - string
+                            - "null"
+                          minLength: 1
+                          maxLength: 64
+                        effectiveFrom:
+                          type: string
+                          format: date-time
+                        effectiveTo:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
+                        editors:
+                          type: array
+                          items:
+                            type: string
+                        approvedBy:
+                          type:
+                            - string
+                            - "null"
+                        approvedAt:
+                          type:
+                            - string
+                            - "null"
+                        retiredAt:
+                          type:
+                            - string
+                            - "null"
+                        version:
+                          type: integer
+                        createdAt:
+                          type: string
+                        createdBy:
+                          type: string
+                        updatedAt:
+                          type: string
+                        updatedBy:
+                          type: string
+                      required:
+                        - id
+                        - lenderId
+                        - productVersionId
+                        - status
+                        - versionNo
+                        - minBureauScore
+                        - minAge
+                        - maxAgeAtMaturity
+                        - minIncome
+                        - foirCapBps
+                        - ltvCapBps
+                        - rateMinBps
+                        - rateMaxBps
+                        - processingFeeBps
+                        - serviceablePincodes
+                        - allowedConstitutions
+                        - allowedEmployment
+                        - minVintageMonths
+                        - documentProfileId
+                        - effectiveFrom
+                        - effectiveTo
+                        - editors
+                        - approvedBy
+                        - approvedAt
+                        - retiredAt
+                        - version
+                        - createdAt
+                        - createdBy
+                        - updatedAt
+                        - updatedBy
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    post:
+      operationId: API-LND-POL-003
+      summary: Create a DRAFT policy version for a lender and one of its product versions (lender_policy.manage)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,128}$
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lenderId:
+                  type: string
+                  pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                productVersionId:
+                  type: string
+                  pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                minBureauScore:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 300
+                  maximum: 900
+                  default: null
+                minAge:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 18
+                  maximum: 100
+                  default: null
+                maxAgeAtMaturity:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 18
+                  maximum: 100
+                  default: null
+                minIncome:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  default: null
+                  required:
+                    - amount
+                    - currency
+                foirCapBps:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                  maximum: 10000
+                  default: null
+                ltvCapBps:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                  maximum: 10000
+                  default: null
+                rateMinBps:
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
+                rateMaxBps:
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
+                processingFeeBps:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 10000
+                  default: null
+                serviceablePincodes:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^[1-9][0-9]{1,5}$
+                  maxItems: 2000
+                  default: []
+                allowedConstitutions:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^[A-Z][A-Z_]{1,39}$
+                  maxItems: 20
+                  default: []
+                allowedEmployment:
+                  type: array
+                  items:
+                    type: string
+                    enum: *a105
+                  maxItems: 4
+                  default: []
+                minVintageMonths:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 1200
+                  default: null
+                documentProfileId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                  maxLength: 64
+                  default: null
+                effectiveFrom:
+                  type: string
+                  format: date-time
+                effectiveTo:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+                  default: null
+              required:
+                - lenderId
+                - productVersionId
+                - rateMinBps
+                - rateMaxBps
+                - effectiveFrom
+              additionalProperties: false
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lpo_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  productVersionId:
+                    type: string
+                    pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: *a104
+                  versionNo:
+                    type: integer
+                    minimum: 1
+                  minBureauScore:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 300
+                    maximum: 900
+                  minAge:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  maxAgeAtMaturity:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  minIncome:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  foirCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  ltvCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  rateMinBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  rateMaxBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  processingFeeBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 10000
+                  serviceablePincodes:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[1-9][0-9]{1,5}$
+                    maxItems: 2000
+                  allowedConstitutions:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[A-Z][A-Z_]{1,39}$
+                    maxItems: 20
+                  allowedEmployment:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a105
+                    maxItems: 4
+                  minVintageMonths:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 1200
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                    minLength: 1
+                    maxLength: 64
+                  effectiveFrom:
+                    type: string
+                    format: date-time
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  retiredAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - productVersionId
+                  - status
+                  - versionNo
+                  - minBureauScore
+                  - minAge
+                  - maxAgeAtMaturity
+                  - minIncome
+                  - foirCapBps
+                  - ltvCapBps
+                  - rateMinBps
+                  - rateMaxBps
+                  - processingFeeBps
+                  - serviceablePincodes
+                  - allowedConstitutions
+                  - allowedEmployment
+                  - minVintageMonths
+                  - documentProfileId
+                  - effectiveFrom
+                  - effectiveTo
+                  - editors
+                  - approvedBy
+                  - approvedAt
+                  - retiredAt
+                  - version
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/lender-policies/{id}:
+    get:
+      operationId: API-LND-POL-002
+      summary: One lender policy version (lender_policy.read)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lpo_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  productVersionId:
+                    type: string
+                    pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: *a104
+                  versionNo:
+                    type: integer
+                    minimum: 1
+                  minBureauScore:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 300
+                    maximum: 900
+                  minAge:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  maxAgeAtMaturity:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  minIncome:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  foirCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  ltvCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  rateMinBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  rateMaxBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  processingFeeBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 10000
+                  serviceablePincodes:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[1-9][0-9]{1,5}$
+                    maxItems: 2000
+                  allowedConstitutions:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[A-Z][A-Z_]{1,39}$
+                    maxItems: 20
+                  allowedEmployment:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a105
+                    maxItems: 4
+                  minVintageMonths:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 1200
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                    minLength: 1
+                    maxLength: 64
+                  effectiveFrom:
+                    type: string
+                    format: date-time
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  retiredAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - productVersionId
+                  - status
+                  - versionNo
+                  - minBureauScore
+                  - minAge
+                  - maxAgeAtMaturity
+                  - minIncome
+                  - foirCapBps
+                  - ltvCapBps
+                  - rateMinBps
+                  - rateMaxBps
+                  - processingFeeBps
+                  - serviceablePincodes
+                  - allowedConstitutions
+                  - allowedEmployment
+                  - minVintageMonths
+                  - documentProfileId
+                  - effectiveFrom
+                  - effectiveTo
+                  - editors
+                  - approvedBy
+                  - approvedAt
+                  - retiredAt
+                  - version
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    patch:
+      operationId: API-LND-POL-004
+      summary: Edit a DRAFT policy version; the caller becomes an editor (lender_policy.manage)
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                minBureauScore:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 300
+                  maximum: 900
+                minAge:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 18
+                  maximum: 100
+                maxAgeAtMaturity:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 18
+                  maximum: 100
+                minIncome:
+                  type:
+                    - object
+                    - "null"
+                  properties:
+                    amount:
+                      type: string
+                      pattern: ^\d{1,16}\.\d{2}$
+                    currency:
+                      type: string
+                      pattern: ^[A-Z]{3}$
+                  required:
+                    - amount
+                    - currency
+                foirCapBps:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                  maximum: 10000
+                ltvCapBps:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 1
+                  maximum: 10000
+                rateMinBps:
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
+                rateMaxBps:
+                  type: integer
+                  minimum: 0
+                  maximum: 10000
+                processingFeeBps:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 10000
+                serviceablePincodes:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^[1-9][0-9]{1,5}$
+                  maxItems: 2000
+                allowedConstitutions:
+                  type: array
+                  items:
+                    type: string
+                    pattern: ^[A-Z][A-Z_]{1,39}$
+                  maxItems: 20
+                allowedEmployment:
+                  type: array
+                  items:
+                    type: string
+                    enum: *a105
+                  maxItems: 4
+                minVintageMonths:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                  maximum: 1200
+                documentProfileId:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                  maxLength: 64
+                effectiveFrom:
+                  type: string
+                  format: date-time
+                effectiveTo:
+                  type:
+                    - string
+                    - "null"
+                  format: date-time
+              additionalProperties: false
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lpo_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  productVersionId:
+                    type: string
+                    pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: *a104
+                  versionNo:
+                    type: integer
+                    minimum: 1
+                  minBureauScore:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 300
+                    maximum: 900
+                  minAge:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  maxAgeAtMaturity:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  minIncome:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  foirCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  ltvCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  rateMinBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  rateMaxBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  processingFeeBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 10000
+                  serviceablePincodes:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[1-9][0-9]{1,5}$
+                    maxItems: 2000
+                  allowedConstitutions:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[A-Z][A-Z_]{1,39}$
+                    maxItems: 20
+                  allowedEmployment:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a105
+                    maxItems: 4
+                  minVintageMonths:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 1200
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                    minLength: 1
+                    maxLength: 64
+                  effectiveFrom:
+                    type: string
+                    format: date-time
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  retiredAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - productVersionId
+                  - status
+                  - versionNo
+                  - minBureauScore
+                  - minAge
+                  - maxAgeAtMaturity
+                  - minIncome
+                  - foirCapBps
+                  - ltvCapBps
+                  - rateMinBps
+                  - rateMaxBps
+                  - processingFeeBps
+                  - serviceablePincodes
+                  - allowedConstitutions
+                  - allowedEmployment
+                  - minVintageMonths
+                  - documentProfileId
+                  - effectiveFrom
+                  - effectiveTo
+                  - editors
+                  - approvedBy
+                  - approvedAt
+                  - retiredAt
+                  - version
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/lender-policies/{id}/transitions:
+    post:
+      operationId: API-LND-POL-005
+      summary: "ACTIVATE a draft (rule.approve, step-up, SOD-01: not by an editor; retires the previous ACTIVE) or RETIRE an active version (lender_policy.manage)"
+      tags:
+        - MOD-LND Lenders
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - ACTIVATE
+                    - RETIRE
+              required:
+                - action
+              additionalProperties: false
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^lpo_[0-9A-HJKMNP-TV-Z]{26}$
+                  lenderId:
+                    type: string
+                    pattern: ^lnd_[0-9A-HJKMNP-TV-Z]{26}$
+                  productVersionId:
+                    type: string
+                    pattern: ^prv_[0-9A-HJKMNP-TV-Z]{26}$
+                  status:
+                    type: string
+                    enum: *a104
+                  versionNo:
+                    type: integer
+                    minimum: 1
+                  minBureauScore:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 300
+                    maximum: 900
+                  minAge:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  maxAgeAtMaturity:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 18
+                    maximum: 100
+                  minIncome:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  foirCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  ltvCapBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 1
+                    maximum: 10000
+                  rateMinBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  rateMaxBps:
+                    type: integer
+                    minimum: 0
+                    maximum: 10000
+                  processingFeeBps:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 10000
+                  serviceablePincodes:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[1-9][0-9]{1,5}$
+                    maxItems: 2000
+                  allowedConstitutions:
+                    type: array
+                    items:
+                      type: string
+                      pattern: ^[A-Z][A-Z_]{1,39}$
+                    maxItems: 20
+                  allowedEmployment:
+                    type: array
+                    items:
+                      type: string
+                      enum: *a105
+                    maxItems: 4
+                  minVintageMonths:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                    maximum: 1200
+                  documentProfileId:
+                    type:
+                      - string
+                      - "null"
+                    minLength: 1
+                    maxLength: 64
+                  effectiveFrom:
+                    type: string
+                    format: date-time
+                  effectiveTo:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  editors:
+                    type: array
+                    items:
+                      type: string
+                  approvedBy:
+                    type:
+                      - string
+                      - "null"
+                  approvedAt:
+                    type:
+                      - string
+                      - "null"
+                  retiredAt:
+                    type:
+                      - string
+                      - "null"
+                  version:
+                    type: integer
+                  createdAt:
+                    type: string
+                  createdBy:
+                    type: string
+                  updatedAt:
+                    type: string
+                  updatedBy:
+                    type: string
+                required:
+                  - id
+                  - lenderId
+                  - productVersionId
+                  - status
+                  - versionNo
+                  - minBureauScore
+                  - minAge
+                  - maxAgeAtMaturity
+                  - minIncome
+                  - foirCapBps
+                  - ltvCapBps
+                  - rateMinBps
+                  - rateMaxBps
+                  - processingFeeBps
+                  - serviceablePincodes
+                  - allowedConstitutions
+                  - allowedEmployment
+                  - minVintageMonths
+                  - documentProfileId
+                  - effectiveFrom
+                  - effectiveTo
+                  - editors
+                  - approvedBy
+                  - approvedAt
+                  - retiredAt
+                  - version
+                  - createdAt
+                  - createdBy
+                  - updatedAt
+                  - updatedBy
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
   /v1/applications:
     get:
-      tags: &a105
+      tags: &a107
         - MOD-APP Loan Applications
       operationId: API-APP-002
       summary: List applications in the caller scope (application.read)
@@ -23597,7 +25900,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a104
+            enum: &a106
               - DRAFT
               - DOCUMENTS_PENDING
               - UNDER_REVIEW
@@ -23663,7 +25966,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a106
+                          enum: &a108
                             - PERSONAL_NEEDS
                             - MEDICAL
                             - EDUCATION
@@ -23676,14 +25979,14 @@ paths:
                             - OTHER
                         applicantType:
                           type: string
-                          enum: &a107
+                          enum: &a109
                             - SALARIED
                             - SELF_EMPLOYED_PROFESSIONAL
                             - SELF_EMPLOYED_BUSINESS
                             - NON_INDIVIDUAL
                         status:
                           type: string
-                          enum: *a104
+                          enum: *a106
                         onHold:
                           type: boolean
                         holdReason:
@@ -23757,11 +26060,11 @@ paths:
         "403":
           description: FORBIDDEN
     post:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-001
       summary: Create a DRAFT application for an existing customer, in a branch the caller may create in (application.create)
-      parameters: &a113
-        - &a109
+      parameters: &a115
+        - &a111
           $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
@@ -23809,10 +26112,10 @@ paths:
                   maximum: 480
                 purposeCode:
                   type: string
-                  enum: *a106
+                  enum: *a108
                 applicantType:
                   type: string
-                  enum: *a107
+                  enum: *a109
                 salesOwnerUserId:
                   type: string
                   minLength: 3
@@ -23861,13 +26164,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a106
+                    enum: *a108
                   applicantType:
                     type: string
-                    enum: *a107
+                    enum: *a109
                   status:
                     type: string
-                    enum: *a104
+                    enum: *a106
                   onHold:
                     type: boolean
                   holdReason:
@@ -23929,7 +26232,7 @@ paths:
           description: VALIDATION_ERROR (applicant type does not match the customer; owner not active in the branch)
   /v1/applications/{id}:
     get:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-003
       summary: One application in the caller scope (application.read)
       responses:
@@ -23969,13 +26272,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a106
+                    enum: *a108
                   applicantType:
                     type: string
-                    enum: *a107
+                    enum: *a109
                   status:
                     type: string
-                    enum: *a104
+                    enum: *a106
                   onHold:
                     type: boolean
                   holdReason:
@@ -24034,10 +26337,10 @@ paths:
         "404":
           description: NOT_FOUND (also when outside the caller scope)
     patch:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-004
       summary: Edit the applicant request while the application is DRAFT or DOCUMENTS_PENDING (application.update)
-      parameters: &a108
+      parameters: &a110
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
@@ -24057,10 +26360,10 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a106
+                  enum: *a108
                 applicantType:
                   type: string
-                  enum: *a107
+                  enum: *a109
               additionalProperties: false
       responses:
         "200":
@@ -24099,13 +26402,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a106
+                    enum: *a108
                   applicantType:
                     type: string
-                    enum: *a107
+                    enum: *a109
                   status:
                     type: string
-                    enum: *a104
+                    enum: *a106
                   onHold:
                     type: boolean
                   holdReason:
@@ -24169,10 +26472,10 @@ paths:
           description: VALIDATION_ERROR
   /v1/applications/{id}/hold:
     put:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-010
       summary: Put an application on hold with a reason, or clear the hold (application.update)
-      parameters: *a108
+      parameters: *a110
       requestBody:
         required: true
         content:
@@ -24231,13 +26534,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a106
+                    enum: *a108
                   applicantType:
                     type: string
-                    enum: *a107
+                    enum: *a109
                   status:
                     type: string
-                    enum: *a104
+                    enum: *a106
                   onHold:
                     type: boolean
                   holdReason:
@@ -24301,7 +26604,7 @@ paths:
           description: VALIDATION_ERROR (a reason is required to hold)
   /v1/applications/{id}/transitions:
     post:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-005
       summary: "Move an application: T-APP-01 select product and start documents, T-APP-02 send to review, T-APP-04 ready for submission (checklist complete), T-APP-08 withdraw, T-APP-09 reopen, T-APP-10 cancel"
       parameters:
@@ -24468,13 +26771,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a106
+                    enum: *a108
                   applicantType:
                     type: string
-                    enum: *a107
+                    enum: *a109
                   status:
                     type: string
-                    enum: *a104
+                    enum: *a106
                   onHold:
                     type: boolean
                   holdReason:
@@ -24538,7 +26841,7 @@ paths:
           description: VALIDATION_ERROR (unknown product version, wrong category, missing reason) or COMPLETENESS_FAILED (T-APP-04)
   /v1/applications/{id}/parties:
     get:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-006-LIST
       summary: Parties of the application, removed ones included (application.read). ETag is the application version
       responses:
@@ -24560,13 +26863,13 @@ paths:
                           type: string
                         role:
                           type: string
-                          enum: &a110
+                          enum: &a112
                             - PRIMARY
                             - CO_APPLICANT
                             - GUARANTOR
                         partyType:
                           type: string
-                          enum: &a111
+                          enum: &a113
                             - INDIVIDUAL
                             - ENTITY
                         relationshipToPrimary:
@@ -24607,11 +26910,11 @@ paths:
         "404":
           description: NOT_FOUND (also when outside the caller scope)
     post:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-006
       summary: Add a co-applicant or guarantor, or remove one (recorded, never deleted; its open checklist items become NOT_APPLICABLE) (application.update)
-      parameters: &a112
-        - *a109
+      parameters: &a114
+        - *a111
         - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
@@ -24684,10 +26987,10 @@ paths:
                           type: string
                         role:
                           type: string
-                          enum: *a110
+                          enum: *a112
                         partyType:
                           type: string
-                          enum: *a111
+                          enum: *a113
                         relationshipToPrimary:
                           type:
                             - string
@@ -24722,10 +27025,10 @@ paths:
           description: VALIDATION_ERROR (customer unknown or already a party; party not on the application)
   /v1/applications/{id}/assignments:
     post:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-011
       summary: Change the sales owner, ops owner or ops queue, with a reason (application.assign)
-      parameters: *a112
+      parameters: *a114
       requestBody:
         required: true
         content:
@@ -24793,13 +27096,13 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a106
+                    enum: *a108
                   applicantType:
                     type: string
-                    enum: *a107
+                    enum: *a109
                   status:
                     type: string
-                    enum: *a104
+                    enum: *a106
                   onHold:
                     type: boolean
                   holdReason:
@@ -24863,7 +27166,7 @@ paths:
           description: VALIDATION_ERROR (user not active in the branch, queue inactive or of another branch)
   /v1/applications/{id}/completeness-checks:
     post:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-008
       summary: Evaluate completeness of the checklist and record the result on the application (application.read)
       responses:
@@ -24902,10 +27205,10 @@ paths:
           description: NOT_FOUND
   /v1/applications/{id}/waivers:
     post:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-009
       summary: Waive a checklist item, or mark it not applicable, with a reason (document.waive)
-      parameters: *a113
+      parameters: *a115
       requestBody:
         required: true
         content:
@@ -24957,7 +27260,7 @@ paths:
           description: VALIDATION_ERROR
   /v1/document-types:
     get:
-      tags: &a114
+      tags: &a116
         - MOD-DOC Documents
       operationId: API-DOC-007
       summary: Document type catalogue (any staff)
@@ -24981,7 +27284,7 @@ paths:
                           type: string
                         category:
                           type: string
-                          enum: &a115
+                          enum: &a117
                             - IDENTITY
                             - ADDRESS
                             - INCOME
@@ -25001,7 +27304,7 @@ paths:
                             - "null"
                         sensitivity:
                           type: string
-                          enum: &a116
+                          enum: &a118
                             - S1
                             - S2
                             - S3
@@ -25050,10 +27353,10 @@ paths:
                   - data
                   - meta
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-008
       summary: Create or update a tenant document type (config.manage)
-      parameters: *a113
+      parameters: *a115
       requestBody:
         required: true
         content:
@@ -25070,12 +27373,12 @@ paths:
                   maxLength: 120
                 category:
                   type: string
-                  enum: *a115
+                  enum: *a117
                 allowedMime:
                   type: array
                   items:
                     type: string
-                    enum: &a117
+                    enum: &a119
                       - application/pdf
                       - image/jpeg
                       - image/png
@@ -25133,7 +27436,7 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a115
+                    enum: *a117
                   allowedMime:
                     type: array
                     items:
@@ -25146,7 +27449,7 @@ paths:
                       - "null"
                   sensitivity:
                     type: string
-                    enum: *a116
+                    enum: *a118
                   retentionClass:
                     type: string
                   instructions:
@@ -25190,7 +27493,7 @@ paths:
                     type: string
                   category:
                     type: string
-                    enum: *a115
+                    enum: *a117
                   allowedMime:
                     type: array
                     items:
@@ -25203,7 +27506,7 @@ paths:
                       - "null"
                   sensitivity:
                     type: string
-                    enum: *a116
+                    enum: *a118
                   retentionClass:
                     type: string
                   instructions:
@@ -25239,10 +27542,10 @@ paths:
           description: VALIDATION_ERROR
   /v1/documents/upload-intents:
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-001
       summary: Ask for a one-time signed upload link for a checklist item (document.upload)
-      parameters: *a113
+      parameters: *a115
       requestBody:
         required: true
         content:
@@ -25262,7 +27565,7 @@ paths:
                   exclusiveMinimum: 0
                 mimeType:
                   type: string
-                  enum: *a117
+                  enum: *a119
                 sha256:
                   type: string
                   pattern: ^[0-9a-f]{64}$
@@ -25308,7 +27611,7 @@ paths:
           description: VALIDATION_ERROR (type, size or mime not allowed)
   /v1/upload-intents/{id}/completion:
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-002
       summary: Register the uploaded file as a new immutable document version (document.upload)
       responses:
@@ -25606,7 +27909,7 @@ paths:
                   exclusiveMinimum: 0
                 mimeType:
                   type: string
-                  enum: *a117
+                  enum: *a119
                 sha256:
                   type: string
                   pattern: ^[0-9a-f]{64}$
@@ -26066,7 +28369,7 @@ paths:
                   - error
   /v1/documents/{id}:
     get:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-003
       summary: Document and its version metadata (document.view)
       responses:
@@ -26081,7 +28384,7 @@ paths:
                     type: string
                   ownerType:
                     type: string
-                    enum: &a118
+                    enum: &a120
                       - APPLICATION
                       - PARTY
                       - CONNECTOR
@@ -26100,7 +28403,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: &a119
+                    enum: &a121
                       - ACTIVE
                       - EXPIRED
                       - PURGED
@@ -26127,13 +28430,13 @@ paths:
                           type: string
                         scanStatus:
                           type: string
-                          enum: &a120
+                          enum: &a122
                             - PENDING
                             - CLEAN
                             - QUARANTINED
                         reviewStatus:
                           type: string
-                          enum: &a121
+                          enum: &a123
                             - PENDING
                             - ACCEPTED
                             - REJECTED
@@ -26187,10 +28490,10 @@ paths:
           description: NOT_FOUND (also when outside the caller scope)
   /v1/document-versions/{id}/reviews:
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-006
       summary: Accept or reject a version; the checklist item follows (document.review)
-      parameters: *a113
+      parameters: *a115
       requestBody:
         required: true
         content:
@@ -26232,7 +28535,7 @@ paths:
                     type: string
                   ownerType:
                     type: string
-                    enum: *a118
+                    enum: *a120
                   ownerId:
                     type: string
                   applicationId:
@@ -26247,7 +28550,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a119
+                    enum: *a121
                   currentVersionId:
                     type:
                       - string
@@ -26271,10 +28574,10 @@ paths:
                           type: string
                         scanStatus:
                           type: string
-                          enum: *a120
+                          enum: *a122
                         reviewStatus:
                           type: string
-                          enum: *a121
+                          enum: *a123
                         validUntil:
                           type:
                             - string
@@ -26325,7 +28628,7 @@ paths:
           description: INVALID_STATE (already reviewed) or DOCUMENT_QUARANTINED
   /v1/document-versions/{id}/view-url:
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-004
       summary: Short-lived signed view link; the access is logged (document.view)
       requestBody:
@@ -26361,7 +28664,7 @@ paths:
           description: DOCUMENT_QUARANTINED
   /v1/document-versions/{id}/download-url:
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-005
       summary: Short-lived signed download link; the access is logged (document.download)
       requestBody:
@@ -26397,7 +28700,7 @@ paths:
           description: DOCUMENT_QUARANTINED
   /v1/applications/{id}/document-archive:
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-009
       summary: Build an encrypted archive of the application documents in the background (document.download)
       responses:
@@ -26412,7 +28715,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: &a122
+                    enum: &a124
                       - QUEUED
                       - READY
                       - FAILED
@@ -26438,7 +28741,7 @@ paths:
           description: NOT_FOUND
   /v1/document-archives/{id}:
     get:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-009-STATUS
       summary: Archive status, with a signed download link once READY (document.download)
       responses:
@@ -26453,7 +28756,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a122
+                    enum: *a124
                   documentCount:
                     type: integer
                   url:
@@ -26476,10 +28779,10 @@ paths:
           description: NOT_FOUND
   /v1/legal-holds:
     post:
-      tags: *a114
+      tags: *a116
       operationId: API-PRV-004
       summary: "Place a legal hold: nothing in its scope is purged while it is active (privacy.manage)"
-      parameters: *a113
+      parameters: *a115
       requestBody:
         required: true
         content:
@@ -26553,7 +28856,7 @@ paths:
         "422":
           description: VALIDATION_ERROR
     get:
-      tags: *a114
+      tags: *a116
       operationId: API-PRV-004-LIST
       summary: Legal holds of the tenant (privacy.manage)
       responses:
@@ -26620,7 +28923,7 @@ paths:
           description: FORBIDDEN
   /public/v1/document-uploads/{token}:
     put:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-001-PUT
       summary: Upload the file bytes to a signed one-time link (no bearer token; the link is the credential)
       security: []
@@ -26641,7 +28944,7 @@ paths:
           description: VALIDATION_ERROR (bytes do not match the declared size or sha256)
   /public/v1/document-files/{token}:
     get:
-      tags: *a114
+      tags: *a116
       operationId: API-DOC-004-GET
       summary: Serve a file from a signed, short-lived view or download link (no bearer token)
       security: []
@@ -26656,7 +28959,7 @@ paths:
           description: NOT_FOUND (link unknown, expired or tampered)
   /v1/applications/{id}/eligibility-assessments:
     post:
-      tags: &a124
+      tags: &a126
         - MOD-ELG Eligibility
       operationId: API-ELG-001
       summary: Run an eligibility assessment against the approved rule set (application.update)
@@ -26688,7 +28991,7 @@ paths:
                           type: string
                         result:
                           type: string
-                          enum: &a123
+                          enum: &a125
                             - PASS
                             - FAIL
                             - UNKNOWN
@@ -26696,7 +28999,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a125
+                          enum: &a127
                             - ELIGIBLE
                             - INELIGIBLE
                             - REFER
@@ -26709,7 +29012,7 @@ paths:
                                 type: string
                               result:
                                 type: string
-                                enum: *a123
+                                enum: *a125
                               reason:
                                 type: string
                             required:
@@ -26816,7 +29119,7 @@ paths:
         "409":
           description: INVALID_STATE (no product chosen, or the application is closed, withdrawn, rejected or cancelled); CONTENT_HASH_MISMATCH (the rule set failed its integrity check, nothing was recorded)
     get:
-      tags: *a124
+      tags: *a126
       operationId: API-ELG-002
       summary: Assessment history for the application, oldest first (application.read)
       parameters:
@@ -26864,12 +29167,12 @@ paths:
                                 type: string
                               result:
                                 type: string
-                                enum: *a123
+                                enum: *a125
                               decisionResult:
                                 type:
                                   - string
                                   - "null"
-                                enum: *a125
+                                enum: *a127
                               criteria:
                                 type: array
                                 items:
@@ -26879,7 +29182,7 @@ paths:
                                       type: string
                                     result:
                                       type: string
-                                      enum: *a123
+                                      enum: *a125
                                     reason:
                                       type: string
                                   required:
@@ -27000,7 +29303,7 @@ paths:
           description: NOT_FOUND (also when outside the caller scope)
   /v1/eligibility-assessments/{id}/overrides:
     post:
-      tags: *a124
+      tags: *a126
       operationId: API-ELG-003
       summary: Override a failed result with a reason (eligibility.override)
       parameters:
@@ -27050,12 +29353,12 @@ paths:
                           type: string
                         result:
                           type: string
-                          enum: *a123
+                          enum: *a125
                         decisionResult:
                           type:
                             - string
                             - "null"
-                          enum: *a125
+                          enum: *a127
                         criteria:
                           type: array
                           items:
@@ -27065,7 +29368,7 @@ paths:
                                 type: string
                               result:
                                 type: string
-                                enum: *a123
+                                enum: *a125
                               reason:
                                 type: string
                             required:
@@ -27175,7 +29478,7 @@ paths:
           description: VALIDATION_ERROR (unknown product version, or reason too short)
   /v1/applications/{id}/eligibility-assessments/latest:
     get:
-      tags: *a124
+      tags: *a126
       operationId: API-ELG-004
       summary: The newest eligibility assessment of the application (application.read)
       responses:
@@ -27204,12 +29507,12 @@ paths:
                           type: string
                         result:
                           type: string
-                          enum: *a123
+                          enum: *a125
                         decisionResult:
                           type:
                             - string
                             - "null"
-                          enum: *a125
+                          enum: *a127
                         criteria:
                           type: array
                           items:
@@ -27219,7 +29522,7 @@ paths:
                                 type: string
                               result:
                                 type: string
-                                enum: *a123
+                                enum: *a125
                               reason:
                                 type: string
                             required:
@@ -27325,7 +29628,7 @@ paths:
           description: NOT_FOUND (no assessment has been run yet, or outside the caller scope)
   /v1/applications/{id}/eligibility-inputs:
     get:
-      tags: *a124
+      tags: *a126
       operationId: API-ELG-005
       summary: Declared and verified income and the credit score of the application (application.update)
       responses:
@@ -27358,7 +29661,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a126
+                    enum: &a128
                       - APPLICANT_STATED
                       - SALES_ESTIMATE
                   declaredAt:
@@ -27437,7 +29740,7 @@ paths:
         "404":
           description: NOT_FOUND (also when outside the caller scope)
     put:
-      tags: *a124
+      tags: *a126
       operationId: API-ELG-006
       summary: Record or clear declared income, verified income and manual credit data (application.update, If-Match)
       parameters:
@@ -27469,7 +29772,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a126
+                  enum: *a128
                 verifiedMonthlyIncome:
                   type:
                     - object
@@ -27543,7 +29846,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a126
+                    enum: *a128
                   declaredAt:
                     type:
                       - string
@@ -27627,7 +29930,7 @@ paths:
           description: VALIDATION_ERROR (a credit date in the future, or income evidence that is not an accepted income document)
   /v1/applications/{id}/checklist:
     get:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-007
       summary: Document checklist of the application with a completeness summary (application.read)
       responses:
@@ -27663,7 +29966,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: &a127
+                          enum: &a129
                             - PENDING
                             - SUBMITTED
                             - ACCEPTED
@@ -27749,7 +30052,7 @@ paths:
           description: NOT_FOUND (also when outside the caller scope)
   /v1/applications/{id}/checklist/generate:
     post:
-      tags: *a105
+      tags: *a107
       operationId: API-APP-007-GENERATE
       summary: Build the document checklist from the rule engine if it is missing, then return it with a completeness summary (application.read)
       responses:
@@ -27785,7 +30088,7 @@ paths:
                             - "null"
                         status:
                           type: string
-                          enum: *a127
+                          enum: *a129
                         rejectReason:
                           type:
                             - string
@@ -27930,7 +30233,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: &a128
+                    enum: &a130
                       - DRAFT
                       - PACKAGE_READY
                       - SUBMITTED
@@ -27953,7 +30256,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a129
+                    enum: &a131
                       - PORTAL
                       - EMAIL
                       - API
@@ -27970,7 +30273,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a130
+                    enum: &a132
                       - MANUAL
                       - LENDER_API
                       - LENDER_FILE
@@ -27984,7 +30287,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a131
+                    enum: &a133
                       - POLICY
                       - INCOME
                       - CREDIT_HISTORY
@@ -28067,7 +30370,7 @@ paths:
                           minimum: 1
                         status:
                           type: string
-                          enum: *a128
+                          enum: *a130
                         lenderReference:
                           type:
                             - string
@@ -28076,7 +30379,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a129
+                          enum: *a131
                         submittedAt:
                           type:
                             - string
@@ -28089,7 +30392,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a130
+                          enum: *a132
                         lastStatusAt:
                           type:
                             - string
@@ -28098,7 +30401,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a131
+                          enum: *a133
                         stalenessFlag:
                           type: boolean
                         tags:
@@ -28172,7 +30475,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a128
+                    enum: *a130
                   lenderReference:
                     type:
                       - string
@@ -28181,7 +30484,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a129
+                    enum: *a131
                   submittedAt:
                     type:
                       - string
@@ -28194,7 +30497,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a130
+                    enum: *a132
                   lastStatusAt:
                     type:
                       - string
@@ -28203,7 +30506,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a131
+                    enum: *a133
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -28263,7 +30566,7 @@ paths:
               properties:
                 kind:
                   type: string
-                  enum: &a132
+                  enum: &a134
                     - SUBMISSION
                     - QUERY_RESPONSE
                   default: SUBMISSION
@@ -28294,7 +30597,7 @@ paths:
                         type: string
                       kind:
                         type: string
-                        enum: *a132
+                        enum: *a134
                       manifest:
                         type: object
                         additionalProperties: {}
@@ -28345,7 +30648,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a128
+                        enum: *a130
                       lenderReference:
                         type:
                           - string
@@ -28354,7 +30657,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a129
+                        enum: *a131
                       submittedAt:
                         type:
                           - string
@@ -28367,7 +30670,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a130
+                        enum: *a132
                       lastStatusAt:
                         type:
                           - string
@@ -28376,7 +30679,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a131
+                        enum: *a133
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -28441,7 +30744,7 @@ paths:
                     type: string
                   kind:
                     type: string
-                    enum: *a132
+                    enum: *a134
                   manifest:
                     type: object
                     additionalProperties: {}
@@ -28504,7 +30807,7 @@ paths:
               properties:
                 channel:
                   type: string
-                  enum: *a129
+                  enum: *a131
                 lenderReference:
                   type: string
                   maxLength: 100
@@ -28570,14 +30873,14 @@ paths:
               properties:
                 toStatus:
                   type: string
-                  enum: *a128
+                  enum: *a130
                 statusSource:
                   type: string
-                  enum: *a130
+                  enum: *a132
                   default: MANUAL
                 declineReasonCode:
                   type: string
-                  enum: *a131
+                  enum: *a133
                 reasonText:
                   type: string
                   maxLength: 1000
@@ -28611,7 +30914,7 @@ paths:
                     minimum: 1
                   status:
                     type: string
-                    enum: *a128
+                    enum: *a130
                   lenderReference:
                     type:
                       - string
@@ -28620,7 +30923,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a129
+                    enum: *a131
                   submittedAt:
                     type:
                       - string
@@ -28633,7 +30936,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a130
+                    enum: *a132
                   lastStatusAt:
                     type:
                       - string
@@ -28642,7 +30945,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a131
+                    enum: *a133
                   stalenessFlag:
                     type: boolean
                   tags:
@@ -28780,7 +31083,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a128
+                        enum: *a130
                       lenderReference:
                         type:
                           - string
@@ -28789,7 +31092,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a129
+                        enum: *a131
                       submittedAt:
                         type:
                           - string
@@ -28802,7 +31105,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a130
+                        enum: *a132
                       lastStatusAt:
                         type:
                           - string
@@ -28811,7 +31114,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a131
+                        enum: *a133
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -29027,7 +31330,7 @@ paths:
                         minimum: 1
                       status:
                         type: string
-                        enum: *a128
+                        enum: *a130
                       lenderReference:
                         type:
                           - string
@@ -29036,7 +31339,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a129
+                        enum: *a131
                       submittedAt:
                         type:
                           - string
@@ -29049,7 +31352,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a130
+                        enum: *a132
                       lastStatusAt:
                         type:
                           - string
@@ -29058,7 +31361,7 @@ paths:
                         type:
                           - string
                           - "null"
-                        enum: *a131
+                        enum: *a133
                       stalenessFlag:
                         type: boolean
                       tags:
@@ -29131,13 +31434,13 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a128
+                          enum: *a130
                         toStatus:
                           type: string
-                          enum: *a128
+                          enum: *a130
                         statusSource:
                           type: string
-                          enum: *a130
+                          enum: *a132
                         reasonText:
                           type:
                             - string
@@ -30093,7 +32396,7 @@ paths:
                             - "null"
                         verificationType:
                           type: string
-                          enum: &a133
+                          enum: &a135
                             - DOCUMENT_REVIEW
                             - IDENTITY_KYC
                             - RESIDENCE_FI
@@ -30102,7 +32405,7 @@ paths:
                             - BANK_STATEMENT
                         status:
                           type: string
-                          enum: &a135
+                          enum: &a137
                             - INITIATED
                             - ASSIGNED
                             - IN_PROGRESS
@@ -30114,7 +32417,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a136
+                          enum: &a138
                             - POSITIVE
                             - NEGATIVE
                             - REFER_TO_CREDIT
@@ -30131,7 +32434,7 @@ paths:
                           type: string
                         priority:
                           type: string
-                          enum: &a134
+                          enum: &a136
                             - HIGH
                             - MEDIUM
                             - LOW
@@ -30155,7 +32458,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: &a137
+                          enum: &a139
                             - ADDRESS_NOT_FOUND
                             - APPLICANT_UNKNOWN
                             - DOCUMENT_FORGED
@@ -30238,7 +32541,7 @@ paths:
                     - "null"
                 verificationType:
                   type: string
-                  enum: *a133
+                  enum: *a135
                 assignedToUserId:
                   type:
                     - string
@@ -30252,7 +32555,7 @@ paths:
                   minLength: 1
                 priority:
                   type: string
-                  enum: *a134
+                  enum: *a136
                   default: MEDIUM
                 scheduledAt:
                   type:
@@ -30296,15 +32599,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a133
+                    enum: *a135
                   status:
                     type: string
-                    enum: *a135
+                    enum: *a137
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a136
+                    enum: *a138
                   assignedToUserId:
                     type:
                       - string
@@ -30317,7 +32620,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a134
+                    enum: *a136
                   scheduledAt:
                     type:
                       - string
@@ -30338,7 +32641,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a137
+                    enum: *a139
                   checklistItmIds:
                     type: array
                     items:
@@ -30412,15 +32715,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a133
+                    enum: *a135
                   status:
                     type: string
-                    enum: *a135
+                    enum: *a137
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a136
+                    enum: *a138
                   assignedToUserId:
                     type:
                       - string
@@ -30433,7 +32736,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a134
+                    enum: *a136
                   scheduledAt:
                     type:
                       - string
@@ -30454,7 +32757,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a137
+                    enum: *a139
                   checklistItmIds:
                     type: array
                     items:
@@ -30515,10 +32818,10 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a135
+                  enum: *a137
                 priority:
                   type: string
-                  enum: *a134
+                  enum: *a136
                 assignedToUserId:
                   type:
                     - string
@@ -30564,15 +32867,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a133
+                    enum: *a135
                   status:
                     type: string
-                    enum: *a135
+                    enum: *a137
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a136
+                    enum: *a138
                   assignedToUserId:
                     type:
                       - string
@@ -30585,7 +32888,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a134
+                    enum: *a136
                   scheduledAt:
                     type:
                       - string
@@ -30606,7 +32909,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a137
+                    enum: *a139
                   checklistItmIds:
                     type: array
                     items:
@@ -30667,14 +32970,14 @@ paths:
               properties:
                 outcome:
                   type: string
-                  enum: *a136
+                  enum: *a138
                 findingsSummary:
                   type: string
                   minLength: 5
                   maxLength: 2000
                 rejectionReason:
                   type: string
-                  enum: *a137
+                  enum: *a139
                 markStatus:
                   type: string
                   enum:
@@ -30710,15 +33013,15 @@ paths:
                       - "null"
                   verificationType:
                     type: string
-                    enum: *a133
+                    enum: *a135
                   status:
                     type: string
-                    enum: *a135
+                    enum: *a137
                   outcome:
                     type:
                       - string
                       - "null"
-                    enum: *a136
+                    enum: *a138
                   assignedToUserId:
                     type:
                       - string
@@ -30731,7 +33034,7 @@ paths:
                     type: string
                   priority:
                     type: string
-                    enum: *a134
+                    enum: *a136
                   scheduledAt:
                     type:
                       - string
@@ -30752,7 +33055,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a137
+                    enum: *a139
                   checklistItmIds:
                     type: array
                     items:
@@ -31118,7 +33421,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a138
+                    enum: &a140
                       - RECEIVED
                       - DUPLICATE_SUSPECTED
                       - QUALIFIED
@@ -31191,7 +33494,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a138
+                    enum: *a140
                   requestedAmount:
                     type: object
                     properties:
@@ -31247,7 +33550,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a138
+            enum: *a140
           required: false
           name: status
           in: query
@@ -31292,7 +33595,7 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         status:
                           type: string
-                          enum: *a138
+                          enum: *a140
                         requestedAmount:
                           type: object
                           properties:
@@ -31385,7 +33688,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a138
+                    enum: *a140
                   requestedAmount:
                     type: object
                     properties:
@@ -31494,7 +33797,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: &a139
+                    enum: &a141
                       - DRAFT
                       - SUBMITTED
                       - UNDERWRITING
@@ -31567,7 +33870,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   status:
                     type: string
-                    enum: *a139
+                    enum: *a141
                   appliedAmount:
                     type: object
                     properties:
@@ -31778,7 +34081,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: &a141
+                    enum: &a143
                       - lead.created
                       - lead.duplicate_flagged
                       - lead.qualified
@@ -31826,7 +34129,7 @@ paths:
                       type: string
                   status:
                     type: string
-                    enum: &a140
+                    enum: &a142
                       - ACTIVE
                       - PAUSED
                       - REVOKED
@@ -31888,7 +34191,7 @@ paths:
                             type: string
                         status:
                           type: string
-                          enum: *a140
+                          enum: *a142
                         failureCount:
                           type: integer
                         lockVersion:
@@ -31997,7 +34300,7 @@ paths:
                   pattern: ^whs_[0-9A-HJKMNP-TV-Z]{26}$
                 eventType:
                   type: string
-                  enum: *a141
+                  enum: *a143
                 customData:
                   type: object
                   additionalProperties: {}
@@ -32078,7 +34381,7 @@ paths:
                           type: string
                         status:
                           type: string
-                          enum: &a142
+                          enum: &a144
                             - ACTIVE
                             - SUSPENDED
                             - REVOKED
@@ -32185,7 +34488,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a142
+                    enum: *a144
                   scopes:
                     type: array
                     items:
@@ -32257,7 +34560,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a142
+                    enum: *a144
                   scopes:
                     type: array
                     items:
@@ -32322,7 +34625,7 @@ paths:
                   maxLength: 100
                 status:
                   type: string
-                  enum: *a142
+                  enum: *a144
                 scopes:
                   type: array
                   items:
@@ -32363,7 +34666,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a142
+                    enum: *a144
                   scopes:
                     type: array
                     items:
@@ -32472,7 +34775,7 @@ paths:
                   type: array
                   items:
                     type: string
-                    enum: *a141
+                    enum: *a143
                   minItems: 1
                 secret:
                   type: string
@@ -32584,7 +34887,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a143
+            enum: &a145
               - USER
               - SERVICE
           required: false
@@ -32669,7 +34972,7 @@ paths:
                           format: date-time
                         actorType:
                           type: string
-                          enum: *a143
+                          enum: *a145
                         actorId:
                           type: string
                         action:
@@ -32981,7 +35284,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: &a144
+                    enum: &a146
                       - PENDING
                       - PROCESSING
                       - COMPLETED
@@ -33061,7 +35364,7 @@ paths:
                           type: string
                         status:
                           type: string
-                          enum: *a144
+                          enum: *a146
                         filters:
                           type: object
                           additionalProperties: {}
@@ -33154,7 +35457,7 @@ paths:
                     type: string
                   status:
                     type: string
-                    enum: *a144
+                    enum: *a146
                   filters:
                     type: object
                     additionalProperties: {}
@@ -33255,7 +35558,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: &a145
+                  enum: &a147
                     - DATA_BREACH
                     - UNAUTHORIZED_ACCESS
                     - MALWARE
@@ -33265,7 +35568,7 @@ paths:
                     - OTHER
                 severity:
                   type: string
-                  enum: &a146
+                  enum: &a148
                     - LOW
                     - MEDIUM
                     - HIGH
@@ -33356,7 +35659,7 @@ paths:
                   default: {}
                 status:
                   type: string
-                  enum: &a147
+                  enum: &a149
                     - OPEN
                     - INVESTIGATING
                     - CONTAINED
@@ -33397,10 +35700,10 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a145
+                    enum: *a147
                   severity:
                     type: string
-                    enum: *a146
+                    enum: *a148
                   detectedAt:
                     type: string
                     format: date-time
@@ -33484,7 +35787,7 @@ paths:
                           - notifiedAt
                   status:
                     type: string
-                    enum: *a147
+                    enum: *a149
                   postMortemRef:
                     type:
                       - string
@@ -33547,19 +35850,19 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a147
+            enum: *a149
           required: false
           name: status
           in: query
         - schema:
             type: string
-            enum: *a146
+            enum: *a148
           required: false
           name: severity
           in: query
         - schema:
             type: string
-            enum: *a145
+            enum: *a147
           required: false
           name: type
           in: query
@@ -33584,10 +35887,10 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         type:
                           type: string
-                          enum: *a145
+                          enum: *a147
                         severity:
                           type: string
-                          enum: *a146
+                          enum: *a148
                         detectedAt:
                           type: string
                           format: date-time
@@ -33671,7 +35974,7 @@ paths:
                                 - notifiedAt
                         status:
                           type: string
-                          enum: *a147
+                          enum: *a149
                         postMortemRef:
                           type:
                             - string
@@ -33749,7 +36052,7 @@ paths:
               properties:
                 severity:
                   type: string
-                  enum: *a146
+                  enum: *a148
                 personalDataInvolved:
                   type: boolean
                 affectedTenants:
@@ -33830,7 +36133,7 @@ paths:
                         - notifiedAt
                 status:
                   type: string
-                  enum: *a147
+                  enum: *a149
                 postMortemRef:
                   type:
                     - string
@@ -33857,10 +36160,10 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a145
+                    enum: *a147
                   severity:
                     type: string
-                    enum: *a146
+                    enum: *a148
                   detectedAt:
                     type: string
                     format: date-time
@@ -33944,7 +36247,7 @@ paths:
                           - notifiedAt
                   status:
                     type: string
-                    enum: *a147
+                    enum: *a149
                   postMortemRef:
                     type:
                       - string
@@ -34017,10 +36320,10 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a145
+                    enum: *a147
                   severity:
                     type: string
-                    enum: *a146
+                    enum: *a148
                   detectedAt:
                     type: string
                     format: date-time
@@ -34104,7 +36407,7 @@ paths:
                           - notifiedAt
                   status:
                     type: string
-                    enum: *a147
+                    enum: *a149
                   postMortemRef:
                     type:
                       - string
@@ -34158,7 +36461,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: &a148
+                  enum: &a150
                     - AUTH_FAILURE
                     - PERMISSION_DENIED
                     - RATE_LIMIT_EXCEEDED
@@ -34176,7 +36479,7 @@ paths:
                   maxLength: 64
                 severity:
                   type: string
-                  enum: &a149
+                  enum: &a151
                     - LOW
                     - MEDIUM
                     - HIGH
@@ -34206,7 +36509,7 @@ paths:
                     pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                   type:
                     type: string
-                    enum: *a148
+                    enum: *a150
                   principal:
                     type: string
                     minLength: 1
@@ -34217,7 +36520,7 @@ paths:
                     maxLength: 64
                   severity:
                     type: string
-                    enum: *a149
+                    enum: *a151
                   details:
                     type: object
                     additionalProperties: {}
@@ -34258,13 +36561,13 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a148
+            enum: *a150
           required: false
           name: type
           in: query
         - schema:
             type: string
-            enum: *a149
+            enum: *a151
           required: false
           name: severity
           in: query
@@ -34308,7 +36611,7 @@ paths:
                           pattern: ^ten_[0-9A-HJKMNP-TV-Z]{26}$
                         type:
                           type: string
-                          enum: *a148
+                          enum: *a150
                         principal:
                           type: string
                           minLength: 1
@@ -34319,7 +36622,7 @@ paths:
                           maxLength: 64
                         severity:
                           type: string
-                          enum: *a149
+                          enum: *a151
                         details:
                           type: object
                           additionalProperties: {}
@@ -34612,7 +36915,7 @@ paths:
                     - MANUAL
                 entityType:
                   type: string
-                  enum: &a150
+                  enum: &a152
                     - LEAD
                     - CUSTOMER
                     - LOAN_APPLICATION
@@ -37665,6 +39968,8 @@ paths:
                         - user.transfer_scheduled
                         - user.transferred
                         - integration.webhook_received
+                        - lender_policy.activated
+                        - lender_policy.retired
                     cronExpression:
                       type: string
                       pattern: ^(\*|([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])|\*\/([0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-9])) (\*|([0-9]|1[0-9]|2[0-3])|\*\/([0-9]|1[0-9]|2[0-3])) (\*|([1-9]|1[0-9]|2[0-9]|3[0-1])|\*\/([1-9]|1[0-9]|2[0-9]|3[0-1])) (\*|([1-9]|1[0-2])|\*\/([1-9]|1[0-2])) (\*|([0-6])|\*\/([0-6]))$
@@ -38237,7 +40542,7 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: &a151
+                  enum: &a153
                     - APPROVE
                     - REJECT
                 reason:
@@ -38490,7 +40795,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: *a150
+                  enum: *a152
                 subjectId:
                   type: string
                   minLength: 1
@@ -38996,7 +41301,7 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: *a151
+                  enum: *a153
                 reason:
                   type: string
                   maxLength: 500
@@ -40666,7 +42971,7 @@ paths:
                   type: string
                 purpose:
                   type: string
-                  enum: *a152
+                  enum: *a154
                 purposeTarget:
                   type: string
               required:
@@ -42871,7 +45176,7 @@ paths:
               properties:
                 field:
                   type: string
-                  enum: &a153
+                  enum: &a155
                     - PAN
                     - DATE_OF_BIRTH
                 reason:
@@ -42894,7 +45199,7 @@ paths:
                     type: string
                   field:
                     type: string
-                    enum: *a153
+                    enum: *a155
                   value:
                     type: string
                   revealedAt:
@@ -43140,7 +45445,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a154
+                    enum: &a156
                       - INDIVIDUAL
                       - PROPRIETORSHIP
                       - PARTNERSHIP
@@ -43153,7 +45458,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: &a155
+                    enum: &a157
                       - SALARIED
                       - SELF_EMPLOYED_PROFESSIONAL
                       - SELF_EMPLOYED_BUSINESS
@@ -43465,12 +45770,12 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a154
+                  enum: *a156
                 employmentType:
                   type:
                     - string
                     - "null"
-                  enum: *a155
+                  enum: *a157
                 employerName:
                   type:
                     - string
@@ -43542,12 +45847,12 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a154
+                    enum: *a156
                   employmentType:
                     type:
                       - string
                       - "null"
-                    enum: *a155
+                    enum: *a157
                   employerName:
                     type:
                       - string
@@ -44618,7 +46923,7 @@ paths:
               properties:
                 addressType:
                   type: string
-                  enum: &a156
+                  enum: &a158
                     - CURRENT
                     - PERMANENT
                     - OFFICE
@@ -44653,7 +46958,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: &a157
+                  enum: &a159
                     - OWNED
                     - RENTED
                     - FAMILY_OWNED
@@ -44686,7 +46991,7 @@ paths:
                     type: string
                   addressType:
                     type: string
-                    enum: *a156
+                    enum: *a158
                   line1:
                     type: string
                   line2:
@@ -44707,7 +47012,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a157
+                    enum: *a159
                   yearsAtAddress:
                     type:
                       - integer
@@ -45003,7 +47308,7 @@ paths:
                   type:
                     - string
                     - "null"
-                  enum: *a157
+                  enum: *a159
                 yearsAtAddress:
                   type:
                     - integer
@@ -45025,7 +47330,7 @@ paths:
                     type: string
                   addressType:
                     type: string
-                    enum: *a156
+                    enum: *a158
                   line1:
                     type: string
                   line2:
@@ -45046,7 +47351,7 @@ paths:
                     type:
                       - string
                       - "null"
-                    enum: *a157
+                    enum: *a159
                   yearsAtAddress:
                     type:
                       - integer
@@ -46532,7 +48837,7 @@ paths:
                   maxLength: 64
                 productCategory:
                   type: string
-                  enum: &a158
+                  enum: &a160
                     - PL
                     - BL
                     - MSME
@@ -46815,7 +49120,7 @@ paths:
                   pattern: ^[1-9][0-9]{5}$
                 productCategory:
                   type: string
-                  enum: *a158
+                  enum: *a160
                 indicativeAmount:
                   type: object
                   properties:
@@ -57026,7 +59331,7 @@ paths:
               properties:
                 direction:
                   type: string
-                  enum: &a159
+                  enum: &a161
                     - TO_LENDER
                     - FROM_CONNECTOR
                 number:
@@ -57327,7 +59632,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a159
+            enum: *a161
           required: false
           name: direction
           in: query
@@ -58818,7 +61123,7 @@ paths:
               properties:
                 connectorType:
                   type: string
-                  enum: &a160
+                  enum: &a162
                     - INDIVIDUAL
                     - PROPRIETORSHIP
                     - PARTNERSHIP
@@ -59117,7 +61422,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a160
+            enum: *a162
           required: false
           name: connectorType
           in: query
@@ -66977,7 +69282,7 @@ paths:
                           minimum: 1
                         status:
                           type: string
-                          enum: *a128
+                          enum: *a130
                         lenderReference:
                           type:
                             - string
@@ -66986,7 +69291,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a129
+                          enum: *a131
                         submittedAt:
                           type:
                             - string
@@ -66999,7 +69304,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a130
+                          enum: *a132
                         lastStatusAt:
                           type:
                             - string
@@ -67008,7 +69313,7 @@ paths:
                           type:
                             - string
                             - "null"
-                          enum: *a131
+                          enum: *a133
                         stalenessFlag:
                           type: boolean
                         tags:
@@ -68196,7 +70501,7 @@ paths:
               properties:
                 subjectType:
                   type: string
-                  enum: &a161
+                  enum: &a163
                     - CUSTOMER
                     - LOAN_APPLICATION
                     - LEAD
@@ -68206,7 +70511,7 @@ paths:
                   maxLength: 64
                 checkType:
                   type: string
-                  enum: &a162
+                  enum: &a164
                     - PAN
                     - GST
                     - CIN
@@ -68218,7 +70523,7 @@ paths:
                     - ADDRESS
                 method:
                   type: string
-                  enum: &a164
+                  enum: &a166
                     - MANUAL
                     - PROVIDER_AUTOMATED
                 purpose:
@@ -68234,7 +70539,7 @@ paths:
                   pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
                 result:
                   type: string
-                  enum: &a163
+                  enum: &a165
                     - VERIFIED
                     - REJECTED
                     - FLAGGED
@@ -68528,7 +70833,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a161
+            enum: *a163
           required: false
           name: subjectType
           in: query
@@ -68539,19 +70844,19 @@ paths:
           in: query
         - schema:
             type: string
-            enum: *a162
+            enum: *a164
           required: false
           name: checkType
           in: query
         - schema:
             type: string
-            enum: *a163
+            enum: *a165
           required: false
           name: result
           in: query
         - schema:
             type: string
-            enum: *a164
+            enum: *a166
           required: false
           name: method
           in: query
@@ -72447,7 +74752,7 @@ paths:
                 weeklyHours:
                   type: object
                   properties:
-                    MON: &a165
+                    MON: &a167
                       type: array
                       items:
                         type: object
@@ -72463,19 +74768,19 @@ paths:
                           - end
                         additionalProperties: false
                       maxItems: 4
-                    TUE: *a165
-                    WED: *a165
-                    THU: *a165
-                    FRI: *a165
-                    SAT: *a165
-                    SUN: *a165
+                    TUE: *a167
+                    WED: *a167
+                    THU: *a167
+                    FRI: *a167
+                    SAT: *a167
+                    SUN: *a167
                 holidays:
                   type: array
                   items:
                     type: string
                     pattern: ^\d{4}-\d{2}-\d{2}$
                   maxItems: 100
-                  default: &a167 []
+                  default: &a169 []
                 quietHours:
                   type:
                     - object
@@ -73534,7 +75839,7 @@ paths:
                       weeklyHours:
                         type: object
                         properties:
-                          MON: &a166
+                          MON: &a168
                             type: array
                             items:
                               type: object
@@ -73550,19 +75855,19 @@ paths:
                                 - end
                               additionalProperties: false
                             maxItems: 4
-                          TUE: *a166
-                          WED: *a166
-                          THU: *a166
-                          FRI: *a166
-                          SAT: *a166
-                          SUN: *a166
+                          TUE: *a168
+                          WED: *a168
+                          THU: *a168
+                          FRI: *a168
+                          SAT: *a168
+                          SUN: *a168
                       holidays:
                         type: array
                         items:
                           type: string
                           pattern: ^\d{4}-\d{2}-\d{2}$
                         maxItems: 100
-                        default: *a167
+                        default: *a169
                       quietHours:
                         type:
                           - object
@@ -73841,7 +76146,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a168
+            enum: *a170
           required: false
           name: status
           in: query
@@ -75794,7 +78099,7 @@ paths:
                       attributes:
                         type: object
                         additionalProperties: {}
-                        default: *a169
+                        default: *a171
                     required:
                       - code
                       - label
@@ -78141,7 +80446,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a170
+                  enum: *a172
                 gitTag:
                   type:
                     - string
@@ -78625,7 +80930,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  enum: *a171
+                  enum: *a173
                 comments:
                   type: string
               required:
@@ -79583,7 +81888,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  enum: *a172
+                  enum: *a174
                 comments:
                   type: string
               required:
@@ -80813,20 +83118,20 @@ paths:
                 modules:
                   type: object
                   properties:
-                    MOD-WFA: &a173
+                    MOD-WFA: &a175
                       type: boolean
-                    MOD-COM: *a173
-                    MOD-PAY: *a173
-                    MOD-REC: *a173
-                    MOD-INV: *a173
-                    MOD-RPT: *a173
-                    MOD-IMP: *a173
-                    MOD-CON: *a173
-                    MOD-CPT: *a173
-                    MOD-PERF: *a173
-                    MOD-VER: *a173
-                    MOD-DSH: *a173
-                    MOD-API: *a173
+                    MOD-COM: *a175
+                    MOD-PAY: *a175
+                    MOD-REC: *a175
+                    MOD-INV: *a175
+                    MOD-RPT: *a175
+                    MOD-IMP: *a175
+                    MOD-CON: *a175
+                    MOD-CPT: *a175
+                    MOD-PERF: *a175
+                    MOD-VER: *a175
+                    MOD-DSH: *a175
+                    MOD-API: *a175
               required:
                 - modules
               additionalProperties: false
@@ -83256,7 +85561,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: &a174
+                  enum: &a176
                     - MT940
                     - CSV
                   default: MT940
@@ -83509,7 +85814,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: *a174
+                  enum: *a176
                   default: MT940
                 rawFeedContent:
                   type: string
@@ -84231,7 +86536,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a175
+            enum: &a177
               - SHORT_REMITTANCE
               - OVER_REMITTANCE
               - MISSING_REMITTANCE
@@ -84486,7 +86791,7 @@ paths:
                     - INVESTIGATING
                 classification:
                   type: string
-                  enum: *a175
+                  enum: *a177
                 resolutionNote:
                   type: string
                   minLength: 5
@@ -84728,7 +87033,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: *a176
+                  enum: *a178
                 amount:
                   type: number
                   exclusiveMinimum: 0
