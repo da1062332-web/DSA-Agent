@@ -41,7 +41,6 @@ describe('TEST-ACC-P0-07 migration 104 removes the screens each role does not us
   it('TEST-ACC-P0-07-01 Branch manager loses back-office and setup screens and keeps commission, payouts and verification', () => {
     expect(hidden('ROLE-BRANCH-MGR').sort()).toEqual(
       [
-        'API management',
         'Access control',
         'Automation rules',
         'Integrations',
@@ -76,7 +75,6 @@ describe('TEST-ACC-P0-07 migration 104 removes the screens each role does not us
         'Access control',
         'Configuration',
         'Integrations',
-        'API management',
         'Audit',
       ]),
     );

@@ -527,22 +527,6 @@ export function buildOperations(
     });
   }
   for (let i = 0; i < 8; i += 1) {
-    out.add('api_client', {
-      id: idOf(t, 'apc', i + 1),
-      tenant_id: t.id,
-      client_id: `client-${t.tag}-${pad(i + 1)}`,
-      client_secret_hash: sha256Hex(`client-secret-${t.tag}-${i}`),
-      name: `Partner integration ${i + 1}`,
-      partner_name: `Partner ${i + 1} (synthetic)`,
-      status: i === 6 ? 'SUSPENDED' : i === 7 ? 'REVOKED' : 'ACTIVE',
-      scopes: ['partner.lead_ingest', i % 2 === 0 ? 'partner.status_read' : 'partner.doc_upload'],
-      rate_limit_rpm: 120 + i * 10,
-      allowed_ips: ['203.0.113.0/24'],
-      last_used_at: at(d, 22, i),
-      lock_version: 1,
-      created_by: staff.owner,
-      updated_by: staff.owner,
-    });
     out.add('api_key', {
       id: idOf(t, 'apk', i + 1),
       tenant_id: t.id,

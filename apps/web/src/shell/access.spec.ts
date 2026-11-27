@@ -372,7 +372,6 @@ describe('Settings Hub RBAC filtering (visibleSettings)', () => {
       '/permissions',
       '/config',
       '/integrations',
-      '/api-management',
       '/audit',
       '/platform-admin',
     ]) {

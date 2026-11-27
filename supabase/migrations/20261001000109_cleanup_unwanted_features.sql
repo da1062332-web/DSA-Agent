@@ -6,6 +6,8 @@
 -- Sections (one per removed feature, each in its own commit):
 --   1. Security incidents and events: security_event, incident_record; permissions security.read, security.incident, security.vuln.
 --   2. Access reviews: access_review_item, access_review; permission access_review.manage.
+--   3. API client registry: api_client. Permissions api.read and api.manage stay: the partner API keys, partner lead reads
+--      and webhook subscriptions still use them.
 --
 -- Safety: a table is dropped only when it holds no rows. If a table has rows, the migration stops and nothing is dropped.
 -- Idempotent: DELETE and DROP ... IF EXISTS can run again without effect.
@@ -48,3 +50,14 @@ DELETE FROM app.permission WHERE code IN ('access_review.manage');
 
 DROP TABLE IF EXISTS app.access_review_item;
 DROP TABLE IF EXISTS app.access_review;
+
+-- 3. API client registry --------------------------------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF to_regclass('app.api_client') IS NOT NULL AND EXISTS (SELECT 1 FROM app.api_client) THEN
+    RAISE EXCEPTION 'M-109: app.api_client holds rows; stop and review before dropping it';
+  END IF;
+END
+$$;
+
+DROP TABLE IF EXISTS app.api_client;

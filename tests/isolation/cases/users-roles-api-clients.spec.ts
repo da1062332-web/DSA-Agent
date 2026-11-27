@@ -1,10 +1,8 @@
-// TEST-SEC-001 cases for users, roles, permissions and API clients (owner: Dev 1 / Platform, Modules 2, 3 and 29).
-// Tenant B holds every administration permission and still must not see or change tenant A's users, roles or API clients.
+// TEST-SEC-001 cases for users, roles and permissions (owner: Vaibhav, platform lane, Modules 2 and 3).
+// Tenant B holds every administration permission and still must not see or change tenant A's users or roles.
 // Named operationIds: API-USR-GET, API-USR-UPDATE, API-USR-PERMS-GET, API-USR-ROLES-ASSIGN,
 // API-USR-ROLES-LIST, API-USR-ROLES-REMOVE, API-ACL-ROLES-LIST, API-ACL-ROLES-GET, API-ACL-ROLES-CREATE,
-// API-ACL-ROLES-UPDATE, API-ACL-ROLES-DELETE, API-ACL-PERMS-LIST, and the API client operations:
-//   get /v1/api-clients, post /v1/api-clients, get /v1/api-clients/{id}, patch /v1/api-clients/{id},
-//   delete /v1/api-clients/{id}, post /v1/api-clients/{id}/rotate-secret.
+// API-ACL-ROLES-UPDATE, API-ACL-ROLES-DELETE, API-ACL-PERMS-LIST. The API client registry was removed with task P0-02.
 import type { PermissionCode } from '@dsa/contracts';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -12,7 +10,6 @@ import { startIsolationEnv, type IsolationEnv } from '../harness';
 
 let env: IsolationEnv;
 let roleAId: string;
-let clientAId: string;
 let userAId: string;
 
 const ADMIN: PermissionCode[] = [
@@ -37,14 +34,6 @@ beforeAll(async () => {
   expect(role.status, JSON.stringify(role.body)).toBe(201);
   roleAId = role.body.id;
 
-  // API clients are stored in app.api_client (PgApiClientRepository), so each request below goes through the database and its policies.
-  const client = await request(a)
-    .post('/v1/api-clients')
-    .set('Idempotency-Key', key())
-    .send({ name: 'Isolation client', partnerName: 'Isolation partner' });
-  expect(client.status, JSON.stringify(client.body)).toBe(201);
-  clientAId = client.body.id;
-  expect(clientAId).toBeTruthy();
 });
 
 afterAll(async () => {
@@ -162,48 +151,5 @@ describe('TEST-SEC-001 roles and permissions: tenants never cross', () => {
     const b = env.appAs(env.B, ADMIN);
     const res = await request(b).get('/v1/permissions');
     expect(res.status).toBe(200);
-  });
-});
-
-describe('TEST-SEC-001 API clients: tenants never cross', () => {
-  it('get /v1/api-clients, get /v1/api-clients/{id}: tenant B cannot see tenant A client', async () => {
-    const a = env.appAs(env.A, ADMIN);
-    const b = env.appAs(env.B, ADMIN);
-    expect((await request(a).get(`/v1/api-clients/${clientAId}`)).status).toBe(200);
-
-    expect((await request(b).get(`/v1/api-clients/${clientAId}`)).status).toBe(404);
-    const list = await request(b).get('/v1/api-clients');
-    expect(list.status).toBe(200);
-    const ids = (list.body.data ?? list.body).map((c: { id: string }) => c.id);
-    expect(ids).not.toContain(clientAId);
-  });
-
-  it('patch /v1/api-clients/{id}, post /v1/api-clients/{id}/rotate-secret, delete /v1/api-clients/{id}: tenant B cannot change tenant A client', async () => {
-    const b = env.appAs(env.B, ADMIN);
-    expect((await request(b).patch(`/v1/api-clients/${clientAId}`).send({ name: 'Hijacked' })).status).toBe(
-      404,
-    );
-    expect(
-      (await request(b).post(`/v1/api-clients/${clientAId}/rotate-secret`).set('Idempotency-Key', key()))
-        .status,
-    ).toBe(404);
-    expect((await request(b).delete(`/v1/api-clients/${clientAId}`)).status).toBe(404);
-    // Still there, still unchanged, for its own tenant.
-    const still = await request(env.appAs(env.A, ADMIN)).get(`/v1/api-clients/${clientAId}`);
-    expect(still.status).toBe(200);
-    expect(still.body.name).toBe('Isolation client');
-  });
-
-  it('post /v1/api-clients: a client created by tenant B belongs to tenant B', async () => {
-    const b = env.appAs(env.B, ADMIN);
-    const created = await request(b)
-      .post('/v1/api-clients')
-      .set('Idempotency-Key', key())
-      .send({ name: 'Isolation client B', partnerName: 'Isolation partner B' });
-    expect(created.status, JSON.stringify(created.body)).toBe(201);
-    expect(created.body.tenantId).toBe(env.B.tenantId);
-    expect((await request(env.appAs(env.A, ADMIN)).get(`/v1/api-clients/${created.body.id}`)).status).toBe(
-      404,
-    );
   });
 });

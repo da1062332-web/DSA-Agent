@@ -9,7 +9,6 @@ export const SEGMENT_TABLE: Record<string, string> = {
   activities: 'activity',
   adjustments: 'adjustment',
   agents: 'app_user',
-  'api-clients': 'api_client',
   applications: 'loan_application',
   'message-templates': 'message_template',
   messages: 'message',

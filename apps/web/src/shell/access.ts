@@ -224,12 +224,6 @@ export const NAV_GROUPS: NavGroup[] = [
         anyOf: ['integration.read', 'integration.manage', 'config.manage'],
       },
       {
-        label: 'API management',
-        to: '/api-management',
-        anyOf: ['api.read', 'api.manage', 'config.manage'],
-        module: 'MOD-API',
-      },
-      {
         label: 'Import and export',
         to: '/admin/import-export',
         anyOf: [...opens('import.read'), 'export.run'],
@@ -836,15 +830,6 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     keywords: ['webhooks', 'api connectors', 'third party services'],
   },
   {
-    id: 'api-management',
-    label: 'API management',
-    category: 'Governance & Administration',
-    to: '/api-management',
-    anyOf: ['api.read', 'api.manage', 'config.manage'],
-    description: 'API client credentials, webhook subscriptions, and token access',
-    keywords: ['api credentials', 'client keys', 'tokens', 'developer api'],
-  },
-  {
     id: 'import-export',
     label: 'Import and export',
     category: 'Governance & Administration',
@@ -1270,15 +1255,6 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
         description: 'Third-party API connectors, webhook event dispatchers & partner platforms',
         iconName: 'HubIcon',
         anyOf: ['integration.read', 'integration.manage', 'config.manage'],
-      },
-      {
-        id: 'api-management',
-        label: 'API Management',
-        category: 'System & Integration',
-        to: '/api-management',
-        description: 'API keys, token rotation, rate limits, developer credentials & outgoing webhooks',
-        iconName: 'KeyIcon',
-        anyOf: ['api.read', 'api.manage', 'config.manage'],
       },
       {
         id: 'admin-import-export',

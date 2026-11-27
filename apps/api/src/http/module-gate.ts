@@ -23,7 +23,7 @@ const PREFIXES: [RegExp, GatedModule][] = [
   [/^\/(targets|leaderboards)(\/|$)/, 'MOD-PERF'],
   [/^\/(verifications|verification-requests)(\/|$)/, 'MOD-VER'],
   [/^\/(shares|upload-links)(\/|$)/, 'MOD-DSH'],
-  [/^\/(api-clients|webhook-subscriptions|webhook-deliveries)(\/|$)/, 'MOD-API'],
+  [/^\/(webhook-subscriptions|webhook-deliveries)(\/|$)/, 'MOD-API'],
 ];
 
 const TTL_MS = 30_000;
