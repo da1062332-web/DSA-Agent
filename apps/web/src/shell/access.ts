@@ -72,8 +72,6 @@ export const NAV_GROUPS: NavGroup[] = [
         to: '/approvals',
         anyOf: [
           'config.manage',
-          'data_correction.approve',
-          'data_correction.request',
           'commission.plan.approve',
           'payout.approve',
         ],
@@ -374,13 +372,11 @@ export const ALL_SEARCHABLE_ITEMS: SearchableItem[] = [
     to: '/approvals',
     anyOf: [
       'config.manage',
-      'data_correction.request',
-      'data_correction.approve',
       'commission.plan.approve',
       'payout.approve',
     ],
-    description: 'Pending approvals for payouts, corrections, and plans',
-    keywords: ['review', 'approve', 'signoff', 'corrections', 'payout review'],
+    description: 'Pending approvals for support access, payouts and plans',
+    keywords: ['review', 'approve', 'signoff', 'support access', 'payout review'],
   },
   {
     id: 'activities',

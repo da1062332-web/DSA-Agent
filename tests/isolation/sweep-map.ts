@@ -29,7 +29,6 @@ export const SEGMENT_TABLE: Record<string, string> = {
   consents: 'consent_record',
   contacts: 'customer_contact_point',
   customers: 'customer',
-  'data-corrections': 'data_correction_request',
   'data-subject-requests': 'data_subject_request',
   'dead-letters': 'wfa_dead_letter',
   'decision-records': 'decision_record',

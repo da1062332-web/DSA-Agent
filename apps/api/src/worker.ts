@@ -1,4 +1,4 @@
-// Dedicated background worker process (owner: Dev 1). Runs outbox relay, platform jobs, storage cleanup, and data corrections.
+// Dedicated background worker process (owner: Dev 1). Runs outbox relay, platform jobs and storage cleanup.
 import dns from 'node:dns';
 
 try {
@@ -13,11 +13,6 @@ import { redactSecrets, registerDatabaseUrl, registerSecrets } from './http/reda
 import { createDb } from './kernel-min/db';
 import { checkDatabase } from './startup-check';
 import { createTxRunner } from './kernel-min/tx-runner';
-import { registeredCorrectionScripts } from './modules/platform-admin/correction-scripts';
-import {
-  DataCorrectionExecutor,
-  startDataCorrectionExecutor,
-} from './modules/platform-admin/data-correction-executor';
 import { OutboxRelay } from './modules/platform/outbox-relay';
 import { createWebhookDeliveryHandler, WEBHOOK_DELIVERY_JOB } from './modules/partner-api/webhooks';
 import { createUserTransferHandler, USER_TRANSFER_JOB } from './modules/platform/user-lifecycle';
@@ -83,28 +78,6 @@ void checkDatabase(db, config.DATABASE_URL).then((status) => {
   }
   logger.info(`Database connected for background worker: ${status.database} on ${status.host}`);
 });
-
-if (config.DATA_CORRECTION_EXECUTOR) {
-  logger.info(
-    { registeredScripts: registeredCorrectionScripts.size },
-    'DATA_CORRECTION_EXECUTOR is on: approved data corrections will be processed.',
-  );
-  startDataCorrectionExecutor(
-    new DataCorrectionExecutor({ txRunner, audit: deps.audit, scripts: registeredCorrectionScripts }),
-    {
-      onOutcome: (o) =>
-        logger.info(
-          { correctionId: o.id, tenantId: o.tenantId, outcome: o.outcome },
-          'data correction processed',
-        ),
-      onError: (err) =>
-        logger.error(
-          { error: redactSecrets(err instanceof Error ? err.message : 'unknown') },
-          'data correction executor tick failed',
-        ),
-    },
-  );
-}
 
 const formatWorkerError = (err: unknown): string => {
   if (err instanceof Error) return err.message || err.name || 'Error';

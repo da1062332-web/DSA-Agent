@@ -145,8 +145,6 @@ export const PERMISSION_CODES = [
   'platform.tenant.suspend',
   'platform.tenant.offboard',
   'platform.tenant.entitlements',
-  'data_correction.request',
-  'data_correction.approve',
   'integration.read',
   'integration.manage',
   'attendance.manage',

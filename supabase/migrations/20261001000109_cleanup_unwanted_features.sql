@@ -10,6 +10,8 @@
 --      and webhook subscriptions still use them.
 --   4. Legal holds and document archives: legal_hold, document_archive. Permissions privacy.manage and document.download stay:
 --      privacy requests and document downloads still use them.
+--   5. Data corrections: data_correction_request, function approved_data_corrections(integer); permissions data_correction.request,
+--      data_correction.approve.
 --
 -- Safety: a table is dropped only when it holds no rows. If a table has rows, the migration stops and nothing is dropped.
 -- Idempotent: DELETE and DROP ... IF EXISTS can run again without effect.
@@ -78,3 +80,18 @@ $$;
 
 DROP TABLE IF EXISTS app.document_archive;
 DROP TABLE IF EXISTS app.legal_hold;
+
+-- 5. Data corrections -----------------------------------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF to_regclass('app.data_correction_request') IS NOT NULL AND EXISTS (SELECT 1 FROM app.data_correction_request) THEN
+    RAISE EXCEPTION 'M-109: app.data_correction_request holds rows; stop and review before dropping it';
+  END IF;
+END
+$$;
+
+DELETE FROM app.role_permission WHERE permission_code IN ('data_correction.request', 'data_correction.approve');
+DELETE FROM app.permission WHERE code IN ('data_correction.request', 'data_correction.approve');
+
+DROP FUNCTION IF EXISTS app.approved_data_corrections(integer);
+DROP TABLE IF EXISTS app.data_correction_request;

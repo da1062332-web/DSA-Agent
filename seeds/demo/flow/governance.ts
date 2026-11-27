@@ -361,7 +361,7 @@ export function buildGovernance(
     });
   });
 
-  // Privacy: retention rules, data subject requests, corrections, data sharing and external shares.
+  // Privacy: retention rules, data subject requests, data sharing and external shares.
   const retention: [string, number, string, string][] = [
     ['R-LOAN', 96, 'LOAN_CLOSED', 'PURGE'],
     ['R-FIN', 84, 'RECORD_CLOSED', 'PURGE'],
@@ -424,43 +424,6 @@ export function buildGovernance(
       updated_by: staff.compliance,
     });
   });
-  for (let i = 0; i < 8; i += 1) {
-    const status = [
-      'APPROVED',
-      'EXECUTED',
-      'PENDING',
-      'REJECTED',
-      'FAILED',
-      'APPROVED',
-      'PENDING',
-      'EXECUTED',
-    ][i];
-    out.add('data_correction_request', {
-      id: idOf(t, 'dcr', i + 1),
-      tenant_id: t.id,
-      entity_type: 'customer',
-      entity_id: ix(o.customers, i),
-      field_name: i % 2 === 0 ? 'home_branch_id' : 'full_name',
-      old_value: i % 2 === 0 ? 'old-branch' : 'Old Name',
-      new_value: i % 2 === 0 ? 'new-branch' : 'New Name',
-      reason: 'Customer asked to correct a typo (synthetic)',
-      status,
-      submitted_by: staff.compliance,
-      approved_by: status === 'APPROVED' || status === 'EXECUTED' ? staff.owner : null,
-      approved_at: status === 'APPROVED' || status === 'EXECUTED' ? at(d, 18, i) : null,
-      lock_version: 1,
-      created_by: staff.compliance,
-      justification: 'Identity document shows the corrected spelling (synthetic)',
-      script_ref: `scripts/correction-${pad(i + 1)}.sql`,
-      target_entity: 'customer',
-      change_description: 'Correct the stored value after dual approval (synthetic)',
-      dry_run_diff_key: `diff/${t.tag}/${pad(i + 1)}.json`,
-      dry_run_diff: '{"changes":1}',
-      requested_by: staff.compliance,
-      executed_at: status === 'EXECUTED' ? at(d, 19, i) : null,
-      failure_reason: status === 'FAILED' ? 'Row locked by another process (synthetic)' : null,
-    });
-  }
   for (let i = 0; i < 8; i += 1) {
     out.add('data_sharing_record', {
       id: idOf(t, 'dsh', i + 1),

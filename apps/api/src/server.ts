@@ -18,11 +18,6 @@ import { supabaseAuth } from './http/supabase-auth';
 import { createDb } from './kernel-min/db';
 import { checkDatabase } from './startup-check';
 import { createTxRunner } from './kernel-min/tx-runner';
-import { registeredCorrectionScripts } from './modules/platform-admin/correction-scripts';
-import {
-  DataCorrectionExecutor,
-  startDataCorrectionExecutor,
-} from './modules/platform-admin/data-correction-executor';
 import { OutboxRelay } from './modules/platform/outbox-relay';
 import { createWebhookDeliveryHandler, WEBHOOK_DELIVERY_JOB } from './modules/partner-api/webhooks';
 import {
@@ -162,29 +157,6 @@ const server = app.listen(config.PORT, () => {
     }
   });
 });
-
-// Carries out APPROVED data corrections. Off unless DATA_CORRECTION_EXECUTOR=true, because it changes tenant data.
-if (config.DATA_CORRECTION_EXECUTOR) {
-  logger.warn(
-    { registeredScripts: registeredCorrectionScripts.size },
-    'DATA_CORRECTION_EXECUTOR is on: approved data corrections will be carried out by the reviewed scripts.',
-  );
-  startDataCorrectionExecutor(
-    new DataCorrectionExecutor({ txRunner, audit: deps.audit, scripts: registeredCorrectionScripts }),
-    {
-      onOutcome: (o) =>
-        logger.info(
-          { correctionId: o.id, tenantId: o.tenantId, outcome: o.outcome },
-          'data correction processed',
-        ),
-      onError: (err) =>
-        logger.error(
-          { error: redactSecrets(err instanceof Error ? err.message : 'unknown') },
-          'data correction executor tick failed',
-        ),
-    },
-  );
-}
 
 // Publishes outbox events to their subscribers (automation triggers), and runs queued jobs and storage retention.
 const formatWorkerError = (err: unknown): string => {

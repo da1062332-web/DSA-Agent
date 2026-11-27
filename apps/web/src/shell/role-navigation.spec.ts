@@ -79,7 +79,6 @@ const HOSTED_GRANTS: Record<string, string[]> = {
     'connector.dispute_resolve',
     'connector.manage',
     'connector.read',
-    'data_correction.request',
     'document.review',
     'document.upload',
     'lender_case.submit',

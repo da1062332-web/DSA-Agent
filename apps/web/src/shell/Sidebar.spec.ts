@@ -109,8 +109,6 @@ describe('platform realm in the sidebar', () => {
     const tenantAdmin = new Set([
       'config.manage',
       'user.manage',
-      'data_correction.request',
-      'data_correction.approve',
     ]);
     const shown = labels((c) => tenantAdmin.has(c), true);
     expect(shown).toContain('Approvals');

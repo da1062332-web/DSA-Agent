@@ -372,11 +372,6 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
         codes: ['user.read', 'user.invite', 'user.offboard', 'user.manage'],
       },
       { id: 'roles', label: 'Roles', codes: ['role.read', 'role.manage'] },
-      {
-        id: 'data-corrections',
-        label: 'Data corrections',
-        codes: ['data_correction.request', 'data_correction.approve'],
-      },
     ],
   },
   {
