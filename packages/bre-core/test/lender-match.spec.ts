@@ -1,6 +1,9 @@
 // packages/bre-core/test/lender-match.spec.ts — owner: Dipanshu (P1-04 lender policy grid and multi-lender matching)
+import { LENDER_MATCH_FIELDS, LENDER_MATCH_REASONS } from '@dsa/contracts';
 import { describe, expect, it } from 'vitest';
 import {
+  LENDER_MATCH_INPUT_FIELDS,
+  LENDER_MATCH_REASON_CODES,
   calculateEmi,
   matchLenderPolicy,
   matchLenders,
@@ -52,6 +55,13 @@ const policy = (over: Partial<LenderPolicyTerms> = {}): LenderPolicyTerms => ({
   effectiveFrom: '2026-01-01T00:00:00Z',
   effectiveTo: null,
   ...over,
+});
+
+describe('P1-04 bre-core and @dsa/contracts agree', () => {
+  it('P1-04 the reason codes and input field names are the same lists, in the same order, as the contracts', () => {
+    expect([...LENDER_MATCH_REASON_CODES]).toEqual([...LENDER_MATCH_REASONS]);
+    expect([...LENDER_MATCH_INPUT_FIELDS]).toEqual([...LENDER_MATCH_FIELDS]);
+  });
 });
 
 describe('P1-04 calculateEmi and principalForEmi', () => {

@@ -136,7 +136,7 @@ GRANT SELECT, INSERT ON lender_match_run, lender_match_result TO dsa_app;   -- h
 -- 4. Permissions and role grants ---------------------------------------------------------------------------------------------
 INSERT INTO app.permission (code, description, introduced_in) VALUES
   ('lender_policy.read', 'View lender policies (the policy grid) and their versions', 'M-120'),
-  ('lender_policy.manage', 'Create and edit lender policy drafts and retire policies; activation also needs rule.approve', 'M-120'),
+  ('lender_policy.manage', 'Create and edit lender policy drafts and retire policies (activation also needs rule.approve)', 'M-120'),
   ('lender_match.run', 'Run multi-lender matching for an application and view its results', 'M-120')
 ON CONFLICT (code) DO NOTHING;
 

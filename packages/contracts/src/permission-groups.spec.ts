@@ -13,10 +13,10 @@ import {
 } from './index';
 
 describe('sub-permission catalogue', () => {
-  it('TEST-PERM-06 the catalogue has the 119 original codes plus the 32 sub-permissions, with no duplicates', () => {
+  it('TEST-PERM-06 the catalogue has the 119 original codes, the 32 sub-permissions and the 3 P1-04 codes (M-120), with no duplicates', () => {
     expect(SUB_PERMISSION_CODES).toHaveLength(32);
-    expect(PERMISSION_CODES).toHaveLength(151);
-    expect(new Set<string>(PERMISSION_CODES).size).toBe(151);
+    expect(PERMISSION_CODES).toHaveLength(154);
+    expect(new Set<string>(PERMISSION_CODES).size).toBe(154);
     expect(new Set<string>(SUB_PERMISSION_CODES).size).toBe(32);
   });
 

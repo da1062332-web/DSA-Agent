@@ -22,6 +22,7 @@ export * from './lender-case';
 export * from './sanction';
 export * from './lenders';
 export * from './products';
+export * from './lender-policy'; // P1-04 (Dipanshu)
 export * from './commission';
 export * from './payouts';
 export * from './reconciliation';
