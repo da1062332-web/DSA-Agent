@@ -110,9 +110,9 @@ export function ImportExportPage() {
         fileFormat: fileName.endsWith('.xlsx') ? 'XLSX' : 'CSV',
         filename: fileName,
         contentBase64: fileContentBase64,
-        // Which bank's sheet this is. The commit refuses a status batch without it, because the mapping that reads
-        // the sheet is the lender's.
-        ...(isStatusImport && misLenderId ? { importOptions: { lenderId: misLenderId } } : {}),
+        // Which bank's sheet this is. Always sent, never spread in conditionally: the field carries a zod default,
+        // so the inferred type requires it and an absent key is a type error rather than an empty object.
+        importOptions: isStatusImport && misLenderId ? { lenderId: misLenderId } : {},
       });
 
       setSelectedBatch(batch);
