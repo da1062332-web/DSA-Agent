@@ -24,6 +24,7 @@ import {
   outcomeText,
   parseBureauPullForm,
   pullCreditReport,
+  recordBureauConsentPath,
 } from './credit-reports';
 
 vi.mock('../../../api/client', async () => {
@@ -198,27 +199,26 @@ describe('P1-05 bureau pull: a cache answer is told from a new report by its tim
 });
 
 describe('P1-05 bureau pull: the consent of a bureau', () => {
-  const consent = (over: Partial<ConsentResource>): ConsentResource =>
-    ({
-      id: 'cnst_1',
-      tenantId: 'ten_1',
-      subjectType: 'CUSTOMER',
-      subjectId: 'cust_1',
-      purpose: 'BUREAU_PULL',
-      purposeTarget: 'CIBIL',
-      noticeVersion: 'V1',
-      channel: 'OTP',
-      evidenceRef: null,
-      capturedBy: 'usr_1',
-      capturedAt: '2026-11-20T09:00:00.000Z',
-      status: 'ACTIVE',
-      withdrawnAt: null,
-      withdrawnBy: null,
-      withdrawalReason: null,
-      expiresAt: null,
-      createdAt: '2026-11-20T09:00:00.000Z',
-      ...over,
-    }) as unknown as ConsentResource;
+  const consent = (over: Partial<ConsentResource>): ConsentResource => ({
+    id: 'cnst_1',
+    tenantId: 'ten_1',
+    subjectType: 'CUSTOMER',
+    subjectId: 'cust_1',
+    purpose: 'BUREAU_PULL',
+    purposeTarget: 'CIBIL',
+    noticeVersion: 'V1',
+    channel: 'OTP',
+    evidenceRef: null,
+    capturedBy: 'usr_1',
+    capturedAt: '2026-11-20T09:00:00.000Z',
+    status: 'ACTIVE',
+    withdrawnAt: null,
+    withdrawnBy: null,
+    withdrawalReason: null,
+    expiresAt: null,
+    createdAt: '2026-11-20T09:00:00.000Z',
+    ...over,
+  });
 
   it('P1-05 an active consent for the bureau is ACTIVE, with when it was captured and how', () => {
     expect(consentStatusFor([consent({})], 'CIBIL', NOW)).toEqual({
@@ -235,11 +235,23 @@ describe('P1-05 bureau pull: the consent of a bureau', () => {
     expect(consentStatusFor(consents, 'CIBIL', NOW).kind).toBe('ACTIVE');
   });
 
+  it('P1-05 the "Record consent" link opens the consents page for the chosen bureau and carries nothing else', () => {
+    for (const bureau of BUREAUS) {
+      expect(recordBureauConsentPath('cust_1', bureau)).toBe(
+        `/customers/cust_1/consents?record=BUREAU_PULL&bureau=${bureau}`,
+      );
+    }
+    // The customer id is encoded, so it cannot add anything to the address.
+    expect(recordBureauConsentPath('cust 1/../x?y=1', 'CRIF')).toBe(
+      '/customers/cust%201%2F..%2Fx%3Fy%3D1/consents?record=BUREAU_PULL&bureau=CRIF',
+    );
+  });
+
   it('P1-05 only BUREAU_PULL consents count: a loan-processing or verification consent is not a bureau consent', () => {
     const others = [
-      consent({ purpose: 'LOAN_PROCESSING' as never, purposeTarget: null }),
-      consent({ purpose: 'VERIFICATION_CHECK' as never, purposeTarget: 'CIBIL' }),
-      consent({ purpose: 'SHARE_WITH_LENDER' as never, purposeTarget: 'CIBIL' }),
+      consent({ purpose: 'LOAN_PROCESSING', purposeTarget: null }),
+      consent({ purpose: 'VERIFICATION_CHECK', purposeTarget: 'CIBIL' }),
+      consent({ purpose: 'SHARE_WITH_LENDER', purposeTarget: 'CIBIL' }),
     ];
 
     expect(consentStatusFor(others, 'CIBIL', NOW)).toEqual({ kind: 'NONE' });

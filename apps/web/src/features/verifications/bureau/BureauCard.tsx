@@ -46,6 +46,7 @@ import {
   formatRupees,
   outcomeText,
   pullCreditReport,
+  recordBureauConsentPath,
 } from './credit-reports';
 
 const tid = (element: string) => `customers.bureau-${element}`;
@@ -284,7 +285,7 @@ function BureauCardBody({
             <Button
               size="small"
               component={RouterLink}
-              to={`/customers/${encodeURIComponent(customerId)}/consents`}
+              to={recordBureauConsentPath(customerId, bureau)}
               data-testid={tid('record-consent-link')}
             >
               Record consent

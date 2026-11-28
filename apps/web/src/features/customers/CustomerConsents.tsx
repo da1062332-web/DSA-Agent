@@ -1,6 +1,6 @@
 // apps/web/src/features/customers/CustomerConsents.tsx — owner: Dev 5 (UI-LEAD-001 Customer Consents)
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { displayEmail, displayMobile } from '../../shell/display';
 import {
@@ -18,6 +18,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormHelperText,
   Grid,
   InputLabel,
   MenuItem,
@@ -41,9 +42,23 @@ import { useLookup } from '../admin/api';
 import type { ConsentResource, RecordConsentPayload } from './types';
 import { NotSet } from '../../ui/NotSet';
 import { RowAction } from '../../shell/RowAction';
+import { BUREAUS, BUREAU_LABELS } from '../verifications/bureau/credit-reports';
+import {
+  CONSENT_PURPOSE_OPTIONS,
+  buildConsentPayload,
+  describeConsentError,
+  initialConsentForm,
+  isBureau,
+  targetAfterPurposeChange,
+  targetKind,
+} from './consent-form';
 
-export function CustomerConsents(): React.ReactElement {
+/** `inline` renders the dialog in place instead of in a portal. Only the tests that render the page on the server pass it. */
+export function CustomerConsents({ inline = false }: { inline?: boolean } = {}): React.ReactElement {
   const { id } = useParams<{ id: string }>();
+  // P1-05: the Bureau card links here with ?record=BUREAU_PULL&bureau=CIBIL. Read once, when the page loads (consent-form.ts).
+  const [searchParams] = useSearchParams();
+  const [initial] = useState(() => initialConsentForm(searchParams));
   const customerId = (id || '').replace(/[)\s]+$/, '');
   const queryClient = useQueryClient();
   const branches = useLookup<{ id: string; code: string; name: string }>('/v1/branches');
@@ -53,9 +68,9 @@ export function CustomerConsents(): React.ReactElement {
     return b ? `${b.name} (${b.code})` : branchId;
   };
 
-  const [openDialog, setOpenDialog] = useState(false);
-  const [purpose, setPurpose] = useState<RecordConsentPayload['purpose']>('CONTACT');
-  const [purposeTarget, setPurposeTarget] = useState('');
+  const [openDialog, setOpenDialog] = useState(initial.open);
+  const [purpose, setPurpose] = useState<RecordConsentPayload['purpose']>(initial.purpose);
+  const [purposeTarget, setPurposeTarget] = useState(initial.purposeTarget);
   const [noticeVersion, setNoticeVersion] = useState('NV-2026.1');
   const [channel, setChannel] = useState<RecordConsentPayload['channel']>('WEB_FORM');
   const [evidenceRef, setEvidenceRef] = useState('');
@@ -87,7 +102,7 @@ export function CustomerConsents(): React.ReactElement {
       queryClient.invalidateQueries({ queryKey: ['customer-consents', customerId] });
     },
     onError: (err: Error) => {
-      setActionError(err.message);
+      setActionError(describeConsentError(err, purpose, purposeTarget));
     },
   });
 
@@ -373,7 +388,7 @@ export function CustomerConsents(): React.ReactElement {
       </Stack>
 
       {/* Record Consent Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth disablePortal={inline}>
         <DialogTitle sx={{ fontWeight: 700 }}>Record Customer Consent (DPDP Act)</DialogTitle>
         <DialogContent dividers>
           {actionError && (
@@ -390,19 +405,46 @@ export function CustomerConsents(): React.ReactElement {
                 label="Purpose"
                 onChange={(e) => {
                   const val = e.target.value as RecordConsentPayload['purpose'];
+                  // A target belongs to one purpose: a bureau or lender chosen for another purpose is not carried over (consent-form.ts).
+                  setPurposeTarget(targetAfterPurposeChange(purpose, val, purposeTarget));
                   setPurpose(val);
-                  if ((val === 'SHARE_WITH_LENDER' || val === 'VERIFICATION_CHECK') && !purposeTarget) {
-                    setPurposeTarget('LENDER_HDFC_01');
-                  }
                 }}
               >
-                <MenuItem value="CONTACT">CONTACT</MenuItem>
-                <MenuItem value="LOAN_PROCESSING">LOAN_PROCESSING</MenuItem>
-                <MenuItem value="SHARE_WITH_LENDER">SHARE_WITH_LENDER</MenuItem>
-                <MenuItem value="VERIFICATION_CHECK">VERIFICATION_CHECK</MenuItem>
-                <MenuItem value="MARKETING">MARKETING</MenuItem>
+                {CONSENT_PURPOSE_OPTIONS.map((p) => (
+                  <MenuItem key={p} value={p}>
+                    {p}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
+
+            {targetKind(purpose) === 'BUREAU' && (
+              <FormControl
+                fullWidth
+                size="small"
+                required
+                error={Boolean(actionError && !isBureau(purposeTarget))}
+              >
+                <InputLabel id="bureau-select-label">Credit bureau</InputLabel>
+                <Select
+                  labelId="bureau-select-label"
+                  value={purposeTarget}
+                  label="Credit bureau"
+                  onChange={(e) => {
+                    setPurposeTarget(e.target.value);
+                    if (actionError) setActionError(null);
+                  }}
+                  data-testid="consent.purposeTarget"
+                >
+                  {BUREAUS.map((b) => (
+                    <MenuItem key={b} value={b}>
+                      {BUREAU_LABELS[b]}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>The bureau this consent allows a credit report to be pulled from</FormHelperText>
+              </FormControl>
+            )}
 
             {purpose === 'SHARE_WITH_LENDER' && (
               <LenderSelect
@@ -490,24 +532,13 @@ export function CustomerConsents(): React.ReactElement {
             variant="contained"
             data-testid="consent.submit"
             onClick={() => {
-              if (
-                (purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK') &&
-                !purposeTarget.trim()
-              ) {
-                setActionError('Target lender or agency identifier is required for this consent purpose.');
+              // The target is sent only for a purpose that takes one (a bureau must be one of the four): consent-form.ts.
+              const built = buildConsentPayload({ purpose, purposeTarget, noticeVersion, channel, evidenceRef });
+              if (!built.ok) {
+                setActionError(built.error);
                 return;
               }
-              const target =
-                purpose === 'SHARE_WITH_LENDER' || purpose === 'VERIFICATION_CHECK'
-                  ? purposeTarget.trim()
-                  : purposeTarget.trim() || undefined;
-              recordMutation.mutate({
-                purpose,
-                purposeTarget: target,
-                noticeVersion: noticeVersion.trim() || 'NV-2026.1',
-                channel,
-                evidenceRef: evidenceRef.trim() || undefined,
-              });
+              recordMutation.mutate(built.payload);
             }}
             disabled={recordMutation.isPending}
           >

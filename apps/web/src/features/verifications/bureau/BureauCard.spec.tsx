@@ -77,27 +77,26 @@ const noHistory = () =>
     cost: null,
   });
 
-const consent = (over: Partial<ConsentResource> = {}): ConsentResource =>
-  ({
-    id: 'cnst_1',
-    tenantId: 'ten_1',
-    subjectType: 'CUSTOMER',
-    subjectId: ID,
-    purpose: 'BUREAU_PULL',
-    purposeTarget: 'CIBIL',
-    noticeVersion: 'V1',
-    channel: 'OTP',
-    evidenceRef: null,
-    capturedBy: 'usr_1',
-    capturedAt: '2026-11-20T09:00:00.000Z',
-    status: 'ACTIVE',
-    withdrawnAt: null,
-    withdrawnBy: null,
-    withdrawalReason: null,
-    expiresAt: null,
-    createdAt: '2026-11-20T09:00:00.000Z',
-    ...over,
-  }) as unknown as ConsentResource;
+const consent = (over: Partial<ConsentResource> = {}): ConsentResource => ({
+  id: 'cnst_1',
+  tenantId: 'ten_1',
+  subjectType: 'CUSTOMER',
+  subjectId: ID,
+  purpose: 'BUREAU_PULL',
+  purposeTarget: 'CIBIL',
+  noticeVersion: 'V1',
+  channel: 'OTP',
+  evidenceRef: null,
+  capturedBy: 'usr_1',
+  capturedAt: '2026-11-20T09:00:00.000Z',
+  status: 'ACTIVE',
+  withdrawnAt: null,
+  withdrawnBy: null,
+  withdrawalReason: null,
+  expiresAt: null,
+  createdAt: '2026-11-20T09:00:00.000Z',
+  ...over,
+});
 
 interface Seed {
   consents?: ConsentResource[];
@@ -278,7 +277,8 @@ describe('P1-05 Bureau card: the consent of the bureau', () => {
     expect(has(html, 'pull-blocked')).toBe(true);
     expect(pullDisabled(html)).toBe(true);
     expect(has(html, 'record-consent-link')).toBe(true);
-    expect(html).toContain(`href="/customers/${ID}/consents"`);
+    // The link opens the Record dialog of the consents page for THIS bureau (the page reads record and bureau once; customers/consent-form.ts).
+    expect(html).toContain(`href="/customers/${ID}/consents?record=BUREAU_PULL&amp;bureau=CIBIL"`);
   });
 
   it('P1-05 a withdrawn consent and an expired one each have their own words and block the pull', () => {
@@ -309,8 +309,8 @@ describe('P1-05 Bureau card: the consent of the bureau', () => {
       {},
       {
         consents: [
-          consent({ purpose: 'VERIFICATION_CHECK' as never }),
-          consent({ purpose: 'LOAN_PROCESSING' as never, purposeTarget: null }),
+          consent({ purpose: 'VERIFICATION_CHECK' }),
+          consent({ purpose: 'LOAN_PROCESSING', purposeTarget: null }),
         ],
       },
     );

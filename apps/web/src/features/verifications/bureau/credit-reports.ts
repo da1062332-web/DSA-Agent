@@ -156,7 +156,7 @@ export function consentStatusFor(
 ): BureauConsentStatus {
   if (!consents) return { kind: 'UNKNOWN' };
   const mine = consents
-    .filter((c) => (c.purpose as string) === 'BUREAU_PULL' && c.purposeTarget === bureau)
+    .filter((c) => c.purpose === 'BUREAU_PULL' && c.purposeTarget === bureau)
     .sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt));
   const live = (c: ConsentResource) =>
     c.status === 'ACTIVE' && (c.expiresAt === null || Date.parse(c.expiresAt) > now.getTime());
@@ -165,6 +165,15 @@ export function consentStatusFor(
   const latest = mine[0];
   if (!latest) return { kind: 'NONE' };
   return latest.status === 'WITHDRAWN' ? { kind: 'WITHDRAWN' } : { kind: 'EXPIRED' };
+}
+
+/**
+ * Where the "Record consent" link of the Bureau card goes: the consents page, with the Record dialog opened for a bureau consent and the bureau
+ * already chosen (the page reads `record` and `bureau` once when it loads: customers/consent-form.ts). Nothing else is in the address.
+ */
+export function recordBureauConsentPath(customerId: string, bureau: CreditBureau): string {
+  const query = new URLSearchParams({ record: 'BUREAU_PULL', bureau });
+  return `/customers/${encodeURIComponent(customerId)}/consents?${query.toString()}`;
 }
 
 export const CONSENT_TEXT: Record<Exclude<BureauConsentStatus['kind'], 'ACTIVE'>, string> = {

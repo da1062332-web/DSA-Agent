@@ -19,7 +19,8 @@ export interface ConsentResource {
   tenantId: string;
   subjectType: 'CUSTOMER' | 'LEAD';
   subjectId: string;
-  purpose: 'CONTACT' | 'LOAN_PROCESSING' | 'SHARE_WITH_LENDER' | 'VERIFICATION_CHECK' | 'MARKETING';
+  purpose:
+    'CONTACT' | 'LOAN_PROCESSING' | 'SHARE_WITH_LENDER' | 'VERIFICATION_CHECK' | 'MARKETING' | 'BUREAU_PULL';
   purposeTarget: string | null;
   noticeVersion: string;
   channel: 'IN_PERSON' | 'PHONE' | 'WEB_FORM' | 'EMAIL' | 'OTP' | 'DOCUMENT';
@@ -35,7 +36,9 @@ export interface ConsentResource {
 }
 
 export interface RecordConsentPayload {
-  purpose: 'CONTACT' | 'LOAN_PROCESSING' | 'SHARE_WITH_LENDER' | 'VERIFICATION_CHECK' | 'MARKETING';
+  purpose:
+    'CONTACT' | 'LOAN_PROCESSING' | 'SHARE_WITH_LENDER' | 'VERIFICATION_CHECK' | 'MARKETING' | 'BUREAU_PULL';
+  /** SHARE_WITH_LENDER: a lender. VERIFICATION_CHECK: an agency. BUREAU_PULL: one of CIBIL, CRIF, EXPERIAN, EQUIFAX (required). */
   purposeTarget?: string;
   noticeVersion: string;
   channel: 'IN_PERSON' | 'PHONE' | 'WEB_FORM' | 'EMAIL' | 'OTP' | 'DOCUMENT';
