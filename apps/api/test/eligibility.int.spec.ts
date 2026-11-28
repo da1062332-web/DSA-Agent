@@ -57,7 +57,7 @@ function appFor(t: TenantFixture, grants: PermissionGrant[], userId = t.userIds[
 }
 const tenantGrants = (...codes: PermissionCode[]): PermissionGrant[] =>
   codes.map((code) => ({ code, scope: 'TENANT', branchIds: [] }));
-const EDIT = tenantGrants('application.read', 'application.update', 'eligibility.override');
+const EDIT = tenantGrants('application.read', 'application.update', 'eligibility.override', 'eligibility.read');
 const READ_ONLY = tenantGrants('application.read');
 
 let seq = 0;
@@ -533,7 +533,7 @@ describe('TEST-ELG-INT eligibility against the database', () => {
   });
 
   it('TEST-ELG-INT-14 the latest assessment is the newest by time, with id as the tie-breaker, however many there are', async () => {
-    const a = appFor(env.A, READ_ONLY.concat(tenantGrants('application.update')));
+    const a = appFor(env.A, READ_ONLY.concat(tenantGrants('application.update', 'eligibility.read')));
     const app = await seedApp(env.A);
     const empty = await request(a).get(`/v1/applications/${app.id}/eligibility-assessments/latest`);
     expect(empty.status).toBe(404);
