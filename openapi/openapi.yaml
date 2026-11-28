@@ -32311,6 +32311,23 @@ paths:
                 properties:
                   stage:
                     type: string
+                  progress:
+                    type: object
+                    properties:
+                      steps:
+                        type: array
+                        items:
+                          type: string
+                      currentIndex:
+                        type:
+                          - integer
+                          - "null"
+                      closed:
+                        type: boolean
+                    required:
+                      - steps
+                      - currentIndex
+                      - closed
                   pendingDocuments:
                     type: array
                     items:
@@ -32321,6 +32338,7 @@ paths:
                     type: string
                 required:
                   - stage
+                  - progress
                   - pendingDocuments
                   - lastUpdated
                   - expiresAt

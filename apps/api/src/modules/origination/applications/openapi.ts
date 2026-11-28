@@ -685,10 +685,26 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
   });
 
   // ---- P3-05 customer status link (status-link.ts) ----
-  const StatusLinkCreated = z.object({ url: z.string(), expiresAt: z.string() });
+  const StatusLinkCreated = z.object({ url: z.string(), expiresAt: z.string(), reference: z.string() });
   const StatusLinkView = z.object({
+    application: z.object({
+      reference: z.string(),
+      loanType: z.string(),
+      appliedOn: z.string(),
+    }),
     stage: z.string(),
-    pendingDocuments: z.array(z.string()),
+    progress: z.object({
+      steps: z.array(z.string()),
+      currentIndex: z.number().int().nullable(),
+      closed: z.boolean(),
+    }),
+    pendingDocuments: z.array(
+      z.object({
+        name: z.string(),
+        status: z.enum(['PENDING', 'REJECTED', 'EXPIRED']),
+        label: z.string(),
+      }),
+    ),
     lastUpdated: z.string(),
     expiresAt: z.string(),
   });

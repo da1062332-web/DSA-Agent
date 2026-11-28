@@ -2,7 +2,9 @@
 // and the SQL reads are covered by the isolation case and the integration suite.
 import { FileLinkSigner } from '../src/modules/origination/applications/document-store';
 import {
+  applicationReference,
   CUSTOMER_STAGE_LABEL,
+  customerProgress,
   customerStageLabel,
   InMemoryStatusLinkRepository,
   STATUS_LINK_TTL_SECONDS,
@@ -27,8 +29,14 @@ function appRepo(): InMemoryStatusLinkRepository {
   const repo = new InMemoryStatusLinkRepository();
   repo.add(
     TENANT_A,
-    { id: APP, status: 'DOCUMENTS_PENDING', updatedAt: '2026-11-26T09:30:00.000Z' },
-    ['Salary slip'],
+    {
+      id: APP,
+      status: 'DOCUMENTS_PENDING',
+      productCategory: 'HL',
+      appliedOn: '2026-11-03',
+      lastChangedAt: '2026-11-26T09:30:00.000Z',
+    },
+    [{ name: 'Salary slip', status: 'PENDING' }],
   );
   return repo;
 }
@@ -93,6 +101,29 @@ describe('TEST-STATUS-01 status link token', () => {
   });
 });
 
+describe('TEST-STATUS-02 progress along the customer path', () => {
+  it('TEST-STATUS-02 a state on the path is the current step, and nothing past it is marked', () => {
+    expect(customerProgress('DRAFT').currentIndex).toBe(0);
+    expect(customerProgress('READY_FOR_SUBMISSION').currentIndex).toBe(1);
+    expect(customerProgress('SANCTIONED').currentIndex).toBe(4);
+    expect(customerProgress('DISBURSED').currentIndex).toBe(5);
+  });
+
+  it('TEST-STATUS-02 a closed application has no current step and is flagged closed', () => {
+    for (const status of ['CLOSED', 'REJECTED', 'WITHDRAWN', 'CANCELLED']) {
+      expect(customerProgress(status)).toMatchObject({ currentIndex: null, closed: true });
+    }
+  });
+
+  it('TEST-STATUS-02 a state with no label is off the path, so the page does not invent a step', () => {
+    expect(customerProgress('SOME_NEW_STATE')).toEqual({
+      steps: expect.any(Array),
+      currentIndex: null,
+      closed: false,
+    });
+  });
+});
+
 describe('TEST-STATUS-02 stage labels', () => {
   it('TEST-STATUS-02 the customer sees the proposed label, and an unknown state shows as In progress', () => {
     expect(customerStageLabel('DOCUMENTS_PENDING')).toBe('Under processing');
@@ -125,6 +156,7 @@ describe('TEST-STATUS-03 the staff route creates the link (POST /v1/applications
     );
     expect(res.status).toBe(201);
     expect(res.body.url.startsWith('/status/')).toBe(true);
+    expect(res.body.reference).toMatch(/^DSA-[A-Z2-9]{5}-[A-Z2-9]{5}$/);
     const token = res.body.url.slice('/status/'.length);
     const verified = new StatusLinkSigner(SECRET).verify(token, NOW_S());
     expect(verified).toMatchObject({ t: TENANT_A, a: APP });
@@ -146,8 +178,13 @@ describe('TEST-STATUS-04 the customer view (GET /public/v1/status/{token})', () 
     );
     expect(res.status).toBe(200);
     expect(res.body.stage).toBe('Under processing');
-    expect(res.body.pendingDocuments).toEqual(['Salary slip']);
+    expect(res.body.pendingDocuments).toEqual([{ name: 'Salary slip', status: 'PENDING', label: 'Pending' }]);
     expect(res.body.lastUpdated).toBe('2026-11-26');
+    expect(res.body.progress).toEqual({
+      steps: ['Application started', 'Under processing', 'Under review', 'Submitted to lender', 'Approved', 'Disbursed'],
+      currentIndex: 1,
+      closed: false,
+    });
     expect(res.headers['cache-control']).toContain('no-store');
     expect(audit.map((a) => a.action)).toEqual(['status_link.viewed']);
   });
@@ -157,7 +194,16 @@ describe('TEST-STATUS-04 the customer view (GET /public/v1/status/{token})', () 
     const res = await request(appFor(as(TENANT_A), appRepo(), auditPort)).get(
       `/public/v1/status/${issue(TENANT_A, APP)}`,
     );
-    expect(Object.keys(res.body).sort()).toEqual(['expiresAt', 'lastUpdated', 'pendingDocuments', 'stage']);
+    expect(Object.keys(res.body).sort()).toEqual([
+      'application',
+      'expiresAt',
+      'lastUpdated',
+      'pendingDocuments',
+      'progress',
+      'stage',
+    ]);
+    expect(Object.keys(res.body.application).sort()).toEqual(['appliedOn', 'loanType', 'reference']);
+    expect(Object.keys(res.body.progress).sort()).toEqual(['closed', 'currentIndex', 'steps']);
   });
 
   it('TEST-STATUS-04 an altered or expired link answers 410 LINK_EXPIRED, with no detail about the application', async () => {
@@ -195,6 +241,66 @@ describe('TEST-STATUS-04 the customer view (GET /public/v1/status/{token})', () 
     }
     expect(statuses.slice(0, 30).every((s) => s === 410)).toBe(true);
     expect(statuses[30]).toBe(429);
+  });
+});
+
+describe('TEST-STATUS-06 the application details and the pending documents', () => {
+  const issueFor = (applicationId: string) =>
+    new StatusLinkSigner(SECRET).sign({ t: TENANT_A, a: applicationId, e: NOW_S() + 3600 });
+
+  it('TEST-STATUS-06 the reference is the same for staff and the customer, and the view never shows the internal id', async () => {
+    const { auditPort } = sinks();
+    const repo = appRepo();
+    const created = await request(appFor(as(TENANT_A, 'application.read'), repo, auditPort)).post(
+      `/v1/applications/${APP}/status-link`,
+    );
+    const view = await request(appFor(as(TENANT_A), repo, auditPort)).get(`/public/v1/status/${issueFor(APP)}`);
+    expect(view.status).toBe(200);
+    expect(view.body.application.reference).toBe(created.body.reference);
+    expect(view.body.application.loanType).toBe('Home loan');
+    expect(view.body.application.appliedOn).toBe('2026-11-03');
+    expect(JSON.stringify(view.body)).not.toContain(APP);
+  });
+
+  it('TEST-STATUS-06 a different application gets a different reference, and a reference never equals the internal id', () => {
+    const a = applicationReference(SECRET, TENANT_A, APP);
+    expect(applicationReference(SECRET, TENANT_A, 'app_01JSTATUS0000000000000002')).not.toBe(a);
+    expect(applicationReference(SECRET, TENANT_B, APP)).not.toBe(a);
+    expect(a).not.toContain(APP);
+  });
+
+  it('TEST-STATUS-06 each pending document carries its own status label, and a co-applicant document is named by role', async () => {
+    const { auditPort } = sinks();
+    const repo = new InMemoryStatusLinkRepository();
+    repo.add(
+      TENANT_A,
+      { id: APP, status: 'UNDER_REVIEW', productCategory: 'PL', appliedOn: '2026-11-03', lastChangedAt: '2026-11-26T09:30:00.000Z' },
+      [
+        { name: 'Bank statement', status: 'REJECTED' },
+        { name: 'Income proof (Co-applicant)', status: 'EXPIRED' },
+        { name: 'PAN card', status: 'PENDING' },
+      ],
+    );
+    const res = await request(appFor(as(TENANT_A), repo, auditPort)).get(`/public/v1/status/${issueFor(APP)}`);
+    expect(res.body.pendingDocuments).toEqual([
+      { name: 'Bank statement', status: 'REJECTED', label: 'Resubmit required' },
+      { name: 'Income proof (Co-applicant)', status: 'EXPIRED', label: 'Renewal required' },
+      { name: 'PAN card', status: 'PENDING', label: 'Pending' },
+    ]);
+  });
+
+  it('TEST-STATUS-06 a closed application shows Closed and no pending documents, and a loan type with no label reads as Loan', async () => {
+    const { auditPort } = sinks();
+    const repo = new InMemoryStatusLinkRepository();
+    repo.add(
+      TENANT_A,
+      { id: APP, status: 'REJECTED', productCategory: 'ZZ', appliedOn: '2026-11-03', lastChangedAt: '2026-11-26T09:30:00.000Z' },
+      [],
+    );
+    const res = await request(appFor(as(TENANT_A), repo, auditPort)).get(`/public/v1/status/${issueFor(APP)}`);
+    expect(res.body.stage).toBe('Closed');
+    expect(res.body.pendingDocuments).toEqual([]);
+    expect(res.body.application.loanType).toBe('Loan');
   });
 });
 
