@@ -3,6 +3,7 @@ import {
   ALLOWED_UPDATE_FIELDS,
   PROHIBITED_UPDATE_FIELDS,
   type DecisionKey,
+  containsPan,
   type DecisionPort,
   type RequestContext,
   type StepType,
@@ -21,7 +22,6 @@ import type {
 // Sensitive PII regexes to safeguard task titles from leaking customer data
 const RE_MOBILE = /(?:\+91|91)?[6-9]\d{9}\b/;
 const RE_EMAIL = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-const RE_PAN = /[A-Z]{5}[0-9]{4}[A-Z]{1}/;
 
 export function resolveFieldValue(path: string, obj: Record<string, unknown>): unknown {
   const parts = path.split('.');
@@ -234,7 +234,7 @@ export function createDefaultStepHandlers(
         }
 
         // TaskPort invariant: Never contains mobile, email, or PAN values
-        if (RE_MOBILE.test(rawTitle) || RE_EMAIL.test(rawTitle) || RE_PAN.test(rawTitle)) {
+        if (RE_MOBILE.test(rawTitle) || RE_EMAIL.test(rawTitle) || containsPan(rawTitle)) {
           return {
             status: 'FAILED',
             error: {

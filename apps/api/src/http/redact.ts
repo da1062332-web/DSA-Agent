@@ -65,6 +65,16 @@ const PII_SHAPES: Array<[RegExp, string]> = [
   [new RegExp(`\\b(${DOB_KEY})(\\s+)["']?\\d{1,4}[-/.]\\d{1,2}[-/.]\\d{1,4}\\b`, 'gi'), '$1$2[redacted]'],
 ];
 
+/**
+ * A PAN in text as ABCDE****F, and the PAN inside a GSTIN as 27ABCDE****F1Z5 (GSTIN characters 3 to 12 are the holder's PAN). The
+ * vendor call-log redactor uses this, so the PAN mask is written once.
+ */
+export function maskPanText(text: string): string {
+  return text
+    .replace(/\b(\d{2}[A-Z]{5})\d{4}([A-Z][1-9A-Z]Z[0-9A-Z])\b/g, '$1****$2')
+    .replace(/\b([A-Z]{5})\d{4}([A-Z])\b/g, '$1****$2');
+}
+
 /** The text with every registered secret, every credential-shaped part and every identity-data pattern replaced. */
 export function redactSecrets(text: string): string {
   let out = text;

@@ -19,6 +19,7 @@ import type {
 } from './selectors';
 import { NotSet } from '../ui/NotSet';
 import {
+  freeTextNoS3,
   maskEmail as sharedMaskEmail,
   maskMobile as sharedMaskMobile,
   maskPan as sharedMaskPan,
@@ -32,7 +33,7 @@ import {
 // ---------------------------------------------------------------------------
 function alreadyMasked(value: string): boolean {
   // A raw PAN or a run of six or more digits is still identity data, whatever else the text holds.
-  if (/[A-Z]{5}\d{4}[A-Z]/i.test(value) || /\d{6,}/.test(value)) return false;
+  if (freeTextNoS3(value) || /\d{6,}/.test(value)) return false;
   // Masked e-mails use stars (j***e@domain); masked mobiles and PANs use stars or the XXXXXX placeholder.
   if (value.includes('@')) return /\*{3,}/.test(value);
   return /\*{3,}|X{4,}/i.test(value);

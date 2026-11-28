@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import {
   AppError,
+  containsAadhaar,
   type CreateVerificationInput,
   type KycCheckRequest,
   type ListVerificationsQuery,
@@ -63,7 +64,7 @@ export class VerificationService {
       notes: input.notes,
       evidenceRef: input.evidenceRef,
     });
-    if (/\b\d{12}\b/.test(payloadStr)) {
+    if (containsAadhaar(payloadStr)) {
       throw AppError.of(
         'VALIDATION_ERROR',
         'Storage of full 12-digit Aadhaar numbers is strictly prohibited under the Aadhaar Act. Only masked format (e.g., XXXXXXXX1234) is permitted.',

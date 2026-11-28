@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { IdSchema } from './ids';
+import { freeTextNoS3 } from './s3-text';
 
 export const USER_STATUSES = ['INVITED', 'ACTIVE', 'SUSPENDED', 'DEACTIVATED'] as const;
 export type UserStatus = (typeof USER_STATUSES)[number];
@@ -68,13 +69,12 @@ export type AssignRoleRequest = z.infer<typeof AssignRoleRequest>;
 
 // ---- Lifecycle (MOD-USR SUB-USR.01, SUB-USR.02; added 2026-10-19) ----
 // Reasons are free text: they reject PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12).
-const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const Reason = z
   .string()
   .trim()
   .min(3)
   .max(200)
-  .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers');
+  .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 /** API-USR-001: the user starts INVITED and becomes ACTIVE on first sign-in. */
 export const InviteUserRequest = CreateUserRequest.omit({ status: true, availability: true }).strict();

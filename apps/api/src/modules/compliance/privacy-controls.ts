@@ -7,7 +7,7 @@
 //   API-PRV-003 PATCH /v1/data-subject-requests/{id}        If-Match; RECEIVED → IN_PROGRESS → COMPLETED or REJECTED
 // Platform minimums and defaults are Proposed until OD-008 is decided: R-SHORT 3 months, R-OPS and R-CFG 36, R-LOAN 60
 // (KYC records five years after the relationship ends), R-FIN and R-AUD 96.
-import { AppError, type RequestContext, type Tx } from '@dsa/contracts';
+import { AppError, freeTextNoS3, type RequestContext, type Tx } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import type { Router } from 'express';
 import { sql } from 'kysely';
@@ -37,14 +37,13 @@ const PLATFORM: Record<
   'R-SHORT': { minimumMonths: 3, trigger: 'RECORD_CREATED', action: 'PURGE' },
 };
 
-const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const safe = (min: number, max: number) =>
   z
     .string()
     .trim()
     .min(min)
     .max(max)
-    .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers');
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 export const RetentionPolicyPut = z
   .object({

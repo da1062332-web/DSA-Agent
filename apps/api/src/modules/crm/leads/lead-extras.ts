@@ -9,7 +9,7 @@
 //   API-LEAD-014 POST /v1/leads/{id}/restore                 lead.archive; If-Match; back to the state it was archived from
 // Every change writes the lead history, an outbox event and an audit event in the same transaction.
 import crypto from 'node:crypto';
-import { AppError, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';
+import { AppError, freeTextNoS3, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import express, { type Router } from 'express';
 import { sql } from 'kysely';
@@ -32,14 +32,13 @@ import { CreateLeadInputSchema } from './types';
 type Row = Record<string, unknown>;
 const OPEN_STATES = ['NEW', 'CONTACT_ATTEMPTED', 'IN_PROGRESS', 'QUALIFIED'];
 const CATEGORIES = ['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER'] as const;
-const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const safeText = (max: number) =>
   z
     .string()
     .trim()
     .min(3)
     .max(max)
-    .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers');
+    .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 export const ApplyLinkCreate = z
   .object({

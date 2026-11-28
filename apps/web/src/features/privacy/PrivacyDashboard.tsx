@@ -39,6 +39,7 @@ import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from 
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
 import { ApplicationName, LenderName, displayEmail, displayMobile, displayPan } from '../../shell/display';
+import { containsAadhaar } from '@dsa/contracts';
 
 const KNOWN_FIELD_LABELS: Record<string, string> = {
   name: 'Full Name',
@@ -156,9 +157,7 @@ export function PrivacyDashboard(): React.ReactElement {
     });
   };
 
-  const detectAadhaarLeak = (text: string): boolean => {
-    return /\b\d{4}[ -]?\d{4}[ -]?\d{4}\b/.test(text) || /\b\d{12}\b/.test(text);
-  };
+  const detectAadhaarLeak = (text: string): boolean => containsAadhaar(text);
 
   // Filtered sharing records
   const filteredSharingRecords = (sharingData?.items || []).filter((r) => {
