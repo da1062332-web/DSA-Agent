@@ -3,6 +3,8 @@
 // key=value secret, a bearer token, a JWT) is masked even when nothing was registered, for example a driver message about a URL this
 // process never loaded.
 
+import { DOB_KEY_SOURCE } from '@dsa/contracts';
+
 const registered = new Set<string>();
 
 /** Values that must never reach a response or a log. Short values are skipped: masking them would hide ordinary words. */
@@ -56,7 +58,7 @@ export function redactRequestPath(url: string): string {
  * when it follows a dob-style key (dob, date of birth, dateOfBirth, date_of_birth, date-of-birth), either with `=` or `:`, or with a
  * space and a numeric date. A bare date with no key is not identity data on its own and is left alone.
  */
-const DOB_KEY = 'dob|date[\\s_-]?of[\\s_-]?birth';
+const DOB_KEY = DOB_KEY_SOURCE;
 const PII_SHAPES: Array<[RegExp, string]> = [
   [/\b([A-Z]{5})[0-9]{4}([A-Z])\b/gi, '$1****$2'],
   [/\b\d{4}[\s-]?\d{4}[\s-]?(\d{4})\b/g, '**** **** $1'],
