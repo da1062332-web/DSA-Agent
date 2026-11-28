@@ -26805,6 +26805,63 @@ paths:
                 type: string
         "404":
           description: NOT_FOUND (link unknown, expired or tampered)
+  /v1/applications/{id}/status-link:
+    post:
+      tags: *a106
+      operationId: API-APP-STATUS-LINK
+      summary: Create a signed status link for the customer (application.read). The url opens /status/{token} and expires after seven days
+      responses:
+        "201":
+          description: "Created: { url, expiresAt }"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  expiresAt:
+                    type: string
+                required:
+                  - url
+                  - expiresAt
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND (also another tenant or outside the caller scope)
+  /public/v1/status/{token}:
+    get:
+      tags: *a106
+      operationId: API-APP-STATUS-VIEW
+      summary: "The customer view of a status link: stage, documents still pending and the last update date. No sign-in; rate-limited per address"
+      security: []
+      responses:
+        "200":
+          description: The view
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stage:
+                    type: string
+                  pendingDocuments:
+                    type: array
+                    items:
+                      type: string
+                  lastUpdated:
+                    type: string
+                  expiresAt:
+                    type: string
+                required:
+                  - stage
+                  - pendingDocuments
+                  - lastUpdated
+                  - expiresAt
+        "410":
+          description: LINK_EXPIRED (invalid, expired or unknown link)
+        "429":
+          description: RATE_LIMITED
   /v1/applications/{id}/eligibility-assessments:
     post:
       tags: &a129

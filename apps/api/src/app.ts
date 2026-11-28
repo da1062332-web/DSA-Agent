@@ -23,6 +23,7 @@ import {
   createPublicDocumentRouter,
 } from './modules/origination/applications/documents';
 import { createPublicApplyRouter } from './modules/crm/leads/lead-extras';
+import { createPublicStatusRouter } from './modules/origination/applications/status-link';
 import { createPublicAuthRouter } from './http/public-auth-router';
 import { createAuthConfigRouter } from './http/auth-config-router';
 import type { TestAuthConfig } from './test-auth';
@@ -172,6 +173,7 @@ export function createApp(opts: CreateAppOptions): Express {
   publicV1.use(createPublicDocumentSharingRouter(opts.deps));
   publicV1.use(createPublicDocumentRouter(opts.deps));
   publicV1.use(createPublicApplyRouter(opts.deps, () => createLeadService(opts.deps)));
+  publicV1.use(createPublicStatusRouter(opts.deps));
   publicV1.use(createPublicIntegrationWebhookRouter(opts.deps));
   // The second-factor setting is public and always mounted: the sign-in screen reads it before anyone is signed in.
   publicV1.use(createAuthConfigRouter());

@@ -27,6 +27,7 @@ import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
 import { OwnersCard, PartiesCard } from './ApplicationFileCards';
 import { CollateralCard } from './CollateralCard';
+import { StatusLinkCard } from './StatusLinkCard';
 import { EligibilityCard } from './EligibilityCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
 import { AppButton, AppCard, FieldGrid } from '../../ui';
@@ -98,6 +99,7 @@ export function ApplicationDetailPage() {
 
       <RelationsCard app={a} />
       <TransitionCard app={a} />
+      <StatusLinkCard applicationId={a.id} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <PartiesCard app={a} />
       <CollateralCard app={a} />

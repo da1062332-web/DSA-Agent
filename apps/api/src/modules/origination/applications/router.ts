@@ -9,6 +9,7 @@ import { registerCollateralRoutes } from './collateral';
 import { registerDocumentRoutes } from './documents';
 import { registerEligibilityRoutes } from './eligibility';
 import { registerPartyRoutes } from './parties';
+import { registerStatusLinkRoutes } from './status-link';
 import { registerTransitionRoutes } from './transitions';
 
 export function createRouter(deps: ApiDeps): Router {
@@ -20,5 +21,6 @@ export function createRouter(deps: ApiDeps): Router {
   registerEligibilityRoutes(router, deps);
   registerChecklistRoutes(router, deps);
   registerDocumentRoutes(router, deps);
+  registerStatusLinkRoutes(router, deps);
   return router;
 }

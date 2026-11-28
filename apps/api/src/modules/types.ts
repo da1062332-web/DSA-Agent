@@ -70,6 +70,8 @@ export interface ApiDeps {
   documentScanner?: unknown;
   /** Secret behind signed document links and archive encryption (derived keys). A per-process secret when absent. */
   documentLinkSecret?: string;
+  /** Reads for the customer status link (P3-05). The Postgres implementation when absent. */
+  statusLinkRepository?: unknown;
   /** Queues background work in the caller's transaction (platform job queue, run per tenant by the worker). */
   enqueueJob?: (
     tx: Tx,

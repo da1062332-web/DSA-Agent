@@ -664,4 +664,41 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
       404: { description: 'NOT_FOUND (link unknown, expired or tampered)' },
     },
   });
+
+  // ---- P3-05 customer status link (status-link.ts) ----
+  const StatusLinkCreated = z.object({ url: z.string(), expiresAt: z.string() });
+  const StatusLinkView = z.object({
+    stage: z.string(),
+    pendingDocuments: z.array(z.string()),
+    lastUpdated: z.string(),
+    expiresAt: z.string(),
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/applications/{id}/status-link',
+    tags: tag,
+    operationId: 'API-APP-STATUS-LINK',
+    summary:
+      'Create a signed status link for the customer (application.read). The url opens /status/{token} and expires after seven days',
+    responses: {
+      201: { description: 'Created: { url, expiresAt }', content: json(StatusLinkCreated) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also another tenant or outside the caller scope)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/public/v1/status/{token}',
+    tags: tag,
+    operationId: 'API-APP-STATUS-VIEW',
+    summary:
+      'The customer view of a status link: stage, documents still pending and the last update date. No sign-in; rate-limited per address',
+    security: [],
+    responses: {
+      200: { description: 'The view', content: json(StatusLinkView) },
+      410: { description: 'LINK_EXPIRED (invalid, expired or unknown link)' },
+      429: { description: 'RATE_LIMITED' },
+    },
+  });
 }
