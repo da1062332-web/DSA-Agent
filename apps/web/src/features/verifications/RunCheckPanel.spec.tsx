@@ -427,6 +427,11 @@ describe('P1-06 run a provider check: an error', () => {
       api('VALIDATION_ERROR', 422, [{ field: 'consentRecordId', issue: 'CONSENT_SUBJECT_MISMATCH' }]),
       'This consent belongs to someone else',
     ],
+    [
+      'a consent made for another purpose',
+      api('VALIDATION_ERROR', 422, [{ field: 'consentRecordId', issue: 'CONSENT_PURPOSE_MISMATCH' }]),
+      'This consent is for another purpose',
+    ],
   ];
   it.each(refused)(
     'P1-06 %s shows its own message and "Change the request", not "Try again"',

@@ -6,7 +6,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
 import { useOptionalAuth } from '../auth/AuthProvider';
-import { useMe, hasPermission } from '../api/useMe';
+import { useMe, hasPermission, moduleEnabled } from '../api/useMe';
 import type {
   BranchItem,
   UserItem,
@@ -275,12 +275,14 @@ export function ConnectorName({
   typographyProps,
   sx,
 }: DisplayProps & { showFirm?: boolean }) {
+  // With connectors switched off for the tenant (MOD-CON) the API refuses the lookup, so none is made.
+  const connectorsOn = moduleEnabled(useMe().data, 'MOD-CON');
   const { data: connectors = [], isLoading } = useDisplayLookup<ConnectorItem>(
     '/v1/connectors',
     undefined,
-    Boolean(id),
+    Boolean(id) && connectorsOn,
   );
-  if (!id) return <>{fallback}</>;
+  if (!id || !connectorsOn) return <>{fallback}</>;
   if (isLoading && connectors.length === 0) return <LoadingName width={110} />;
   const match = connectors.find((c) => c.id === id);
   let name: string | null = null;

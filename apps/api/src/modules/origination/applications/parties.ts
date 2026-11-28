@@ -5,7 +5,18 @@
 // Parties are append-only: a removal sets removed_at (M-072), never deletes, and the party's open checklist items become
 // NOT_APPLICABLE; an added party gets its own checklist once the application is collecting documents. Each write bumps
 // the application's lock_version (If-Match), and writes audit and outbox in the same transaction.
-import { AppError, type PartyPort, type PermissionCode, type RequestContext, type Tx } from '@dsa/contracts';
+// P1-03: a co-applicant must name their relationship to the primary applicant, and the relationship must fit both party types
+// (partyRelationshipIssue in @dsa/contracts): family ties join two individuals, a director joins a company, and only one live spouse.
+// These checks run after the 404 and If-Match checks, so a stale or out-of-scope request never learns more than before.
+import {
+  AppError,
+  partyRelationshipIssue,
+  type PartyPort,
+  type PartyTypeCode,
+  type PermissionCode,
+  type RequestContext,
+  type Tx,
+} from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import type { Router } from 'express';
 import { sql } from 'kysely';
@@ -67,6 +78,40 @@ async function requireActiveUser(deps: ApiDeps, tx: Tx, userId: string, branchId
   if (!user || user.status !== 'ACTIVE' || !user.branchIds.includes(branchId)) {
     throw AppError.of('VALIDATION_ERROR', 'The user must be active and work in the application branch.', [
       { field, issue: user ? 'NOT_ELIGIBLE' : 'NOT_FOUND' },
+    ]);
+  }
+}
+
+const RELATIONSHIP_MESSAGES = {
+  REQUIRED: 'Say how the co-applicant is related to the primary applicant.',
+  FAMILY_NEEDS_INDIVIDUALS: 'A spouse, parent, child or sibling relationship needs two individuals.',
+  DIRECTOR_NEEDS_ENTITY: 'A director is an individual co-applying with a company applicant.',
+} as const;
+
+/** 422 when the relationship does not fit the role and the two party types, or names a second live spouse. */
+function assertRelationship(
+  input: { role: 'CO_APPLICANT' | 'GUARANTOR'; relationshipToPrimary?: string | undefined },
+  active: Row[],
+  partyType: PartyTypeCode,
+): void {
+  const primary = active.find((p) => p.role === 'PRIMARY');
+  const relationship = input.relationshipToPrimary as Parameters<
+    typeof partyRelationshipIssue
+  >[0]['relationship'];
+  const issue = partyRelationshipIssue({
+    role: input.role,
+    relationship,
+    primaryPartyType: (primary?.party_type as PartyTypeCode | undefined) ?? 'INDIVIDUAL',
+    partyType,
+  });
+  if (issue) {
+    throw AppError.of('VALIDATION_ERROR', RELATIONSHIP_MESSAGES[issue], [
+      { field: 'relationshipToPrimary', issue },
+    ]);
+  }
+  if (relationship === 'SPOUSE' && active.some((p) => p.relationship_to_primary === 'SPOUSE')) {
+    throw AppError.of('VALIDATION_ERROR', 'The primary applicant already has a spouse on this application.', [
+      { field: 'relationshipToPrimary', issue: 'DUPLICATE' },
     ]);
   }
 }
@@ -198,6 +243,7 @@ export function registerPartyRoutes(router: Router, deps: ApiDeps): void {
             if (!party) {
               throw AppError.of('NOT_FOUND', 'Customer not found.', [{ field: 'customerId', issue: 'NOT_FOUND' }]);
             }
+            assertRelationship(input, active, party.partyType);
             partyId = deps.ids.next('pty');
             await sql`
               insert into application_party (id, tenant_id, application_id, customer_id, role, party_type,

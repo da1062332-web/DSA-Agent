@@ -1,6 +1,7 @@
 import type {
   ApplicationPort,
   AuditPort,
+  CommissionPort,
   ComplaintSubjectPort,
   LenderPort,
   ProductVersionPort,
@@ -32,6 +33,8 @@ export interface ApiDeps {
   ids: IdGenerator;
   decisionPort?: DecisionPort;
   applicationPort?: ApplicationPort;
+  /** P2-01: lets invoices and reconciliation read earned commission without entering the finance module. */
+  commissionPort?: CommissionPort;
   /** Confirms complaint subjects exist in the caller tenant (MOD-GRV). Required for complaint intake; fails closed without it. */
   complaintSubjectPort?: ComplaintSubjectPort;
   /** Checks a product version for an application transition (T-APP-01). Provided by origination/catalogue. */

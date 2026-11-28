@@ -122,7 +122,15 @@ describe('permission catalogue', () => {
     for (const [role, codes] of Object.entries(ROLE_GRANT_TRIMS))
       for (const code of codes) fromSeed.add(`${role} ${code}`);
     expect(fromSql.size).toBe(61);
-    expect([...fromSql].filter((p) => !fromSeed.has(p))).toEqual([]);
+    // The demo seed has no retired roles (M-105, M-119), so their M-104 trims have no seed counterpart.
+    const retired = [
+      'ROLE-COMMISSION-APPROVER',
+      'ROLE-DOC-VERIFIER',
+      'ROLE-RULE-AUTHOR',
+      'ROLE-RULE-APPROVER',
+      'ROLE-VERIFIER',
+    ];
+    expect([...fromSql].filter((p) => !fromSeed.has(p) && !retired.includes(p.split(' ')[0]!))).toEqual([]);
     expect([...fromSeed].filter((p) => !fromSql.has(p))).toEqual([]);
     const catalogue = new Set<string>(PERMISSION_CODES);
     expect(

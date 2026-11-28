@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useMe } from '../../api/useMe';
+import { moduleEnabled, useMe } from '../../api/useMe';
 import { useToast } from '../../shell/toast';
 import { PageContainer } from '../../ui';
 import { BranchSelect, ConnectorSelect } from '../admin/components';
@@ -337,19 +337,22 @@ export function LeadCreate() {
                   inputProps={{ maxLength: 100 }}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
-                <ConnectorSelect
-                  value={connectorId || null}
-                  onChange={(id) => setConnectorId(id ?? '')}
-                  testId="lead-form.connector"
-                  label={source === 'REFERRAL' ? 'Referring Connector / Partner *' : 'Connector / Partner (Optional)'}
-                  helperText={
-                    source === 'REFERRAL'
-                      ? 'Select the registered partner earning referral attribution'
-                      : 'Optional partner referral attribution'
-                  }
-                />
-              </Grid>
+              {/* Connector attribution only while the tenant has connectors switched on (MOD-CON). */}
+              {moduleEnabled(me.data, 'MOD-CON') && (
+                <Grid item xs={12} sm={4}>
+                  <ConnectorSelect
+                    value={connectorId || null}
+                    onChange={(id) => setConnectorId(id ?? '')}
+                    testId="lead-form.connector"
+                    label={source === 'REFERRAL' ? 'Referring Connector / Partner *' : 'Connector / Partner (Optional)'}
+                    helperText={
+                      source === 'REFERRAL'
+                        ? 'Select the registered partner earning referral attribution'
+                        : 'Optional partner referral attribution'
+                    }
+                  />
+                </Grid>
+              )}
             </Grid>
 
             <Divider sx={{ my: 3 }} />

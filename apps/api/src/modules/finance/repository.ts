@@ -243,6 +243,15 @@ export interface FinanceRepository {
     monthEndExclusive: Date,
   ): Promise<string>;
 
+  /** Every EARNED calculation for one lender in a date range, for the monthly lender invoice (P2-01). */
+  listEarnedCalculationsForMonth(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    monthStart: Date,
+    monthEndExclusive: Date,
+  ): Promise<CommissionCalculationRow[]>;
+
   insertCommissionCalculation(tx: Tx, row: CommissionCalculationRow): Promise<void>;
   findCommissionCalculationById(
     tx: Tx,
@@ -570,6 +579,26 @@ export class SqlFinanceRepository implements FinanceRepository {
         AND event_date < ${monthEndExclusive}
     `.execute(tx);
     return res.rows[0]?.total ?? '0';
+  }
+
+  async listEarnedCalculationsForMonth(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    monthStart: Date,
+    monthEndExclusive: Date,
+  ): Promise<CommissionCalculationRow[]> {
+    const res = await sql<CommissionCalculationRow>`
+      SELECT * FROM commission_calculation
+      WHERE tenant_id = ${tenantId}
+        AND lender_id = ${lenderId}
+        AND calc_kind = 'EARNED'
+        AND status NOT IN ('REVERSED', 'SUPERSEDED')
+        AND event_date >= ${monthStart}
+        AND event_date < ${monthEndExclusive}
+      ORDER BY event_date, id
+    `.execute(tx);
+    return res.rows;
   }
 
   async insertCommissionCalculation(tx: Tx, row: CommissionCalculationRow): Promise<void> {

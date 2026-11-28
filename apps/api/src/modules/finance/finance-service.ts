@@ -1,6 +1,9 @@
 // apps/api/src/modules/finance/finance-service.ts — owner: Developer 5 (Bhushan) (MOD-COM / MOD-PAY)
 import {
   AppError,
+  computeAmountWithBps,
+  formatPaiseToMoney,
+  parseMoneyToPaise,
   type AdjustmentResponse,
   type ApproveCommissionPlanInput,
   type RetireCommissionPlanInput,
@@ -57,54 +60,12 @@ export interface FinanceServiceDeps {
   storage?: FinancialStoragePort;
 }
 
-// Deterministic fixed-point integer math (scale: paise = 1/100 INR)
-function parseMoneyToPaise(amountStr: string): bigint {
-  const parts = amountStr.split('.');
-  const whole = BigInt(parts[0] || '0');
-  const frac = (parts[1] || '').padEnd(2, '0').slice(0, 2);
-  return whole * 100n + BigInt(frac);
-}
-
-function formatPaiseToMoney(paise: bigint): string {
-  const whole = paise / 100n;
-  const frac = (paise % 100n).toString().padStart(2, '0');
-  return `${whole}.${frac}`;
-}
-
+// Paise arithmetic lives in @dsa/contracts so the commission engine and the invoices module share one copy and
+// cannot drift apart; computeAmountWithRate stays here because only the manual correction route takes a float rate.
 function computeAmountWithRate(amountPaise: bigint, rate: number): bigint {
   // Scale rate by 1,000,000 (parts per million) with half-up rounding
   const ratePPM = BigInt(Math.round(rate * 1_000_000));
   return (amountPaise * ratePPM + 500_000n) / 1_000_000n;
-}
-
-/**
- * Integer division honouring commission_plan.rounding_mode (P2-01). Every amount here is non-negative, so rounding
- * down is the same as truncating. An unknown mode falls back to half-up, which is the column's default.
- */
-function divideWithRounding(numerator: bigint, denominator: bigint, roundingMode: string): bigint {
-  const quotient = numerator / denominator;
-  const remainder = numerator % denominator;
-  if (remainder === 0n) return quotient;
-  switch (roundingMode) {
-    case 'ROUND_DOWN':
-      return quotient;
-    case 'ROUND_UP':
-      return quotient + 1n;
-    case 'ROUND_HALF_EVEN': {
-      const twice = remainder * 2n;
-      if (twice > denominator) return quotient + 1n;
-      if (twice < denominator) return quotient;
-      return quotient % 2n === 0n ? quotient : quotient + 1n;
-    }
-    case 'ROUND_HALF_UP':
-    default:
-      return remainder * 2n >= denominator ? quotient + 1n : quotient;
-  }
-}
-
-/** Basis points are exact integers, so this never goes through a float the way computeAmountWithRate does. */
-function computeAmountWithBps(amountPaise: bigint, rateBps: number, roundingMode: string): bigint {
-  return divideWithRounding(amountPaise * BigInt(rateBps), 10_000n, roundingMode);
 }
 
 /** The calendar month containing `date`, in UTC, as [start, endExclusive). event_date is a DATE column. */
