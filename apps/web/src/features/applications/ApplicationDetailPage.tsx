@@ -407,8 +407,14 @@ export function TransitionCard({
     <Card sx={{ mb: 3 }}>
       <CardContent>
         <Typography variant="h6" gutterBottom>
-          Next step
+          {forwardInSteps ? 'Withdraw, cancel or send back' : 'Next step'}
         </Typography>
+        {forwardInSteps && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            If, having seen this step, the file should not go ahead, stop it here. Save &amp; next below moves
+            it forward.
+          </Typography>
+        )}
         <ErrorAlert error={run.error} />
         <Stack spacing={3}>
           {showStart && (

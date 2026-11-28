@@ -140,7 +140,7 @@ export function StagePanel({
   journey: JourneyState;
   index: number;
   onSelect: (index: number) => void;
-  /** The actions that move the file on (shown on the stage the file is at). */
+  /** The other actions on the file (withdraw, cancel, send back), shown after the step's work on the stage the file is at. */
   nextStep: ReactNode;
   /** The loan request form (the Draft stage). */
   loanRequest: ReactNode;
@@ -299,9 +299,10 @@ export function StagePanel({
         )}
       </Box>
 
-      {position === 'current' || position === 'stopped' ? nextStep : null}
-
       {(position !== 'upcoming' || preview) && <Box sx={{ '& > *': { mb: 3 } }}>{work}</Box>}
+
+      {/* Last, after the step's work: withdraw, cancel or send back is decided once the documents and eligibility have been seen. */}
+      {position === 'current' || position === 'stopped' ? nextStep : null}
     </Box>
   );
 }
