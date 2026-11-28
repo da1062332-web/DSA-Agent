@@ -3,6 +3,7 @@
 import { FileLinkSigner } from '../src/modules/origination/applications/document-store';
 import {
   CUSTOMER_STAGE_LABEL,
+  customerProgress,
   customerStageLabel,
   InMemoryStatusLinkRepository,
   STATUS_LINK_TTL_SECONDS,
@@ -93,6 +94,29 @@ describe('TEST-STATUS-01 status link token', () => {
   });
 });
 
+describe('TEST-STATUS-02 progress along the customer path', () => {
+  it('TEST-STATUS-02 a state on the path is the current step, and nothing past it is marked', () => {
+    expect(customerProgress('DRAFT').currentIndex).toBe(0);
+    expect(customerProgress('READY_FOR_SUBMISSION').currentIndex).toBe(1);
+    expect(customerProgress('SANCTIONED').currentIndex).toBe(4);
+    expect(customerProgress('DISBURSED').currentIndex).toBe(5);
+  });
+
+  it('TEST-STATUS-02 a closed application has no current step and is flagged closed', () => {
+    for (const status of ['CLOSED', 'REJECTED', 'WITHDRAWN', 'CANCELLED']) {
+      expect(customerProgress(status)).toMatchObject({ currentIndex: null, closed: true });
+    }
+  });
+
+  it('TEST-STATUS-02 a state with no label is off the path, so the page does not invent a step', () => {
+    expect(customerProgress('SOME_NEW_STATE')).toEqual({
+      steps: expect.any(Array),
+      currentIndex: null,
+      closed: false,
+    });
+  });
+});
+
 describe('TEST-STATUS-02 stage labels', () => {
   it('TEST-STATUS-02 the customer sees the proposed label, and an unknown state shows as In progress', () => {
     expect(customerStageLabel('DOCUMENTS_PENDING')).toBe('Under processing');
@@ -148,6 +172,11 @@ describe('TEST-STATUS-04 the customer view (GET /public/v1/status/{token})', () 
     expect(res.body.stage).toBe('Under processing');
     expect(res.body.pendingDocuments).toEqual(['Salary slip']);
     expect(res.body.lastUpdated).toBe('2026-11-26');
+    expect(res.body.progress).toEqual({
+      steps: ['Application started', 'Under processing', 'Under review', 'Submitted to lender', 'Approved', 'Disbursed'],
+      currentIndex: 1,
+      closed: false,
+    });
     expect(res.headers['cache-control']).toContain('no-store');
     expect(audit.map((a) => a.action)).toEqual(['status_link.viewed']);
   });
@@ -157,7 +186,8 @@ describe('TEST-STATUS-04 the customer view (GET /public/v1/status/{token})', () 
     const res = await request(appFor(as(TENANT_A), appRepo(), auditPort)).get(
       `/public/v1/status/${issue(TENANT_A, APP)}`,
     );
-    expect(Object.keys(res.body).sort()).toEqual(['expiresAt', 'lastUpdated', 'pendingDocuments', 'stage']);
+    expect(Object.keys(res.body).sort()).toEqual(['expiresAt', 'lastUpdated', 'pendingDocuments', 'progress', 'stage']);
+    expect(Object.keys(res.body.progress).sort()).toEqual(['closed', 'currentIndex', 'steps']);
   });
 
   it('TEST-STATUS-04 an altered or expired link answers 410 LINK_EXPIRED, with no detail about the application', async () => {

@@ -17,9 +17,6 @@ import { documentDeps } from './documents';
 
 export const STATUS_LINK_TTL_SECONDS = 7 * 24 * 60 * 60;
 
-/** Checklist items the customer still has to act on: not sent yet, rejected, or expired. */
-const PENDING_ITEM_STATUSES = ['PENDING', 'REJECTED', 'EXPIRED'];
-
 export interface StatusLinkClaims {
   /** tenant */
   t: string;
@@ -62,26 +59,49 @@ export class StatusLinkSigner {
 }
 
 /**
- * The customer's words for each application state. These are proposed labels: the partner labels in partner-view are a separate list,
- * and these need the owner's approval before they go live. REJECTED, WITHDRAWN and CANCELLED show as Closed, as the partner proposal does.
+ * The customer's path through an application, in order. Each step is the customer's label for one or more internal states. These are
+ * proposed labels: the partner labels in partner-view are a separate list, and these need the owner's approval before they go live.
  */
+export const CUSTOMER_PROGRESS_STEPS: { label: string; states: readonly string[] }[] = [
+  { label: 'Application started', states: ['DRAFT'] },
+  { label: 'Under processing', states: ['DOCUMENTS_PENDING', 'READY_FOR_SUBMISSION'] },
+  { label: 'Under review', states: ['UNDER_REVIEW'] },
+  { label: 'Submitted to lender', states: ['SUBMITTED'] },
+  { label: 'Approved', states: ['SANCTIONED'] },
+  { label: 'Disbursed', states: ['PARTIALLY_DISBURSED', 'DISBURSED'] },
+];
+
+/** States that end the application off the path. REJECTED, WITHDRAWN and CANCELLED show as Closed, as the partner proposal does. */
+export const CUSTOMER_CLOSED_STATES: readonly string[] = ['CLOSED', 'REJECTED', 'WITHDRAWN', 'CANCELLED'];
+
+/** The customer's words for each application state, derived from the path above. */
 export const CUSTOMER_STAGE_LABEL: Record<string, string> = {
-  DRAFT: 'Application started',
-  DOCUMENTS_PENDING: 'Under processing',
-  UNDER_REVIEW: 'Under review',
-  READY_FOR_SUBMISSION: 'Under processing',
-  SUBMITTED: 'Submitted to lender',
-  SANCTIONED: 'Approved',
-  PARTIALLY_DISBURSED: 'Disbursed',
-  DISBURSED: 'Disbursed',
-  CLOSED: 'Closed',
-  REJECTED: 'Closed',
-  WITHDRAWN: 'Closed',
-  CANCELLED: 'Closed',
+  ...Object.fromEntries(CUSTOMER_PROGRESS_STEPS.flatMap((step) => step.states.map((s) => [s, step.label]))),
+  ...Object.fromEntries(CUSTOMER_CLOSED_STATES.map((s) => [s, 'Closed'])),
 };
 
 /** A state with no label shows as In progress, the generic label, rather than the internal state name. */
 export const customerStageLabel = (status: string): string => CUSTOMER_STAGE_LABEL[status] ?? 'In progress';
+
+/**
+ * Where the application stands on the customer's path. `currentIndex` is the step it is on, or null when it is off the path (closed, or a
+ * state with no label). Steps before the current one are completed; the page never guesses a step the backend has not reached.
+ */
+export interface CustomerProgress {
+  steps: string[];
+  currentIndex: number | null;
+  closed: boolean;
+}
+
+export function customerProgress(status: string): CustomerProgress {
+  const steps = CUSTOMER_PROGRESS_STEPS.map((step) => step.label);
+  const index = CUSTOMER_PROGRESS_STEPS.findIndex((step) => step.states.includes(status));
+  return {
+    steps,
+    currentIndex: index >= 0 ? index : null,
+    closed: CUSTOMER_CLOSED_STATES.includes(status),
+  };
+}
 
 export interface StatusLinkApplication {
   id: string;
@@ -238,6 +258,7 @@ export function createPublicStatusRouter(deps: ApiDeps, opts: PublicStatusRouter
         });
         return {
           stage,
+          progress: customerProgress(app.status),
           pendingDocuments,
           lastUpdated: app.updatedAt.slice(0, 10),
           expiresAt: new Date(claims.e * 1000).toISOString(),

@@ -673,6 +673,11 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
   const StatusLinkCreated = z.object({ url: z.string(), expiresAt: z.string() });
   const StatusLinkView = z.object({
     stage: z.string(),
+    progress: z.object({
+      steps: z.array(z.string()),
+      currentIndex: z.number().int().nullable(),
+      closed: z.boolean(),
+    }),
     pendingDocuments: z.array(z.string()),
     lastUpdated: z.string(),
     expiresAt: z.string(),

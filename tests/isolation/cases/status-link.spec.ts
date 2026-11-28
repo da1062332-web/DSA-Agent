@@ -85,7 +85,8 @@ describe('TEST-SEC-001 customer status link: tenants never cross', () => {
     expect(view.status).toBe(200);
     expect(view.body.stage).toBe('Under processing');
     expect(view.body.pendingDocuments).toEqual(['Salary slip']);
-    expect(Object.keys(view.body).sort()).toEqual(['expiresAt', 'lastUpdated', 'pendingDocuments', 'stage']);
+    expect(Object.keys(view.body).sort()).toEqual(['expiresAt', 'lastUpdated', 'pendingDocuments', 'progress', 'stage']);
+    expect(view.body.progress.currentIndex).toBe(1);
   });
 
   it('TEST-SEC-001 a link that names tenant B for tenant A application never resolves (410, no detail)', async () => {
