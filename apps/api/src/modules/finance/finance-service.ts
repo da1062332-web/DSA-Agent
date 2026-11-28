@@ -1,12 +1,21 @@
 // apps/api/src/modules/finance/finance-service.ts — owner: Developer 5 (Bhushan) (MOD-COM / MOD-PAY)
 import {
   AppError,
+  computeAmountWithBps,
+  formatPaiseToMoney,
+  parseMoneyToPaise,
   type AdjustmentResponse,
   type ApproveCommissionPlanInput,
   type RetireCommissionPlanInput,
   type ApproveRecalculationProposalInput,
   type AuditPort,
+  CreateCommissionPlanSlabInputSchema,
   type CalculateCommissionInput,
+  type CommissionPlanSlabResponse,
+  type CreateCommissionPlanSlabInput,
+  type SlabPreviewInput,
+  type SlabPreviewResponse,
+  type UpdateCommissionPlanSlabInput,
   type CancelPayoutRequestInput,
   type CommissionCalculationResponse,
   type CommissionPayableResponse,
@@ -39,6 +48,7 @@ import { encryptPaymentRef, maskPaymentRef } from './crypto';
 import { paymentGatewayService } from './payment-gateway';
 import type {
   AdjustmentRow,
+  CommissionPlanSlabRow,
   CommissionCalculationRow,
   CommissionPayableRow,
   CommissionPlanRow,
@@ -57,24 +67,19 @@ export interface FinanceServiceDeps {
   storage?: FinancialStoragePort;
 }
 
-// Deterministic fixed-point integer math (scale: paise = 1/100 INR)
-function parseMoneyToPaise(amountStr: string): bigint {
-  const parts = amountStr.split('.');
-  const whole = BigInt(parts[0] || '0');
-  const frac = (parts[1] || '').padEnd(2, '0').slice(0, 2);
-  return whole * 100n + BigInt(frac);
-}
-
-function formatPaiseToMoney(paise: bigint): string {
-  const whole = paise / 100n;
-  const frac = (paise % 100n).toString().padStart(2, '0');
-  return `${whole}.${frac}`;
-}
-
+// Paise arithmetic lives in @dsa/contracts so the commission engine and the invoices module share one copy and
+// cannot drift apart; computeAmountWithRate stays here because only the manual correction route takes a float rate.
 function computeAmountWithRate(amountPaise: bigint, rate: number): bigint {
   // Scale rate by 1,000,000 (parts per million) with half-up rounding
   const ratePPM = BigInt(Math.round(rate * 1_000_000));
   return (amountPaise * ratePPM + 500_000n) / 1_000_000n;
+}
+
+/** The calendar month containing `date`, in UTC, as [start, endExclusive). event_date is a DATE column. */
+function monthBoundsUtc(date: Date): { start: Date; endExclusive: Date } {
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+  const endExclusive = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+  return { start, endExclusive };
 }
 
 /**
@@ -181,6 +186,11 @@ export class FinanceService {
       rounding_mode: input.roundingMode ?? 'ROUND_HALF_UP',
       clawback_window_days: input.clawbackWindowDays ?? 90,
       rule_set_id: input.ruleSetId ?? null,
+      // Forward charge at 18% GST and 2% TDS is the default. Whether an individual or proprietorship DSA should instead
+      // be RCM_RECIPIENT_PAYS (Notification 13/2017-CT(R) Sl. 11) is confirmed per tenant, not inferred here.
+      tax_treatment: 'FORWARD_CHARGE',
+      gst_rate_bps: 1800,
+      tds_rate_bps: 200,
       status: 'DRAFT',
       lock_version: 0,
       created_at: now,
@@ -423,16 +433,18 @@ export class FinanceService {
       );
     }
 
-    const rate = input.customRate ?? 0.015;
-
     // Deterministic monetary arithmetic without floating-point errors
     const basisPaise = parseMoneyToPaise(input.basisAmount);
-    const grossPaise = computeAmountWithRate(basisPaise, rate);
-    const grossStr = formatPaiseToMoney(grossPaise);
 
     const calcId = this.nextId('ccal');
     const now = new Date();
     const eventDate = input.eventDate ? new Date(input.eventDate) : now;
+
+    // P2-01: the rate comes from the lender's payout grid, not from a constant. customRate still wins, for corrections.
+    const resolved = await this.resolveCommissionRate(tx, tenantId, plan, input, basisPaise, eventDate);
+    const rate = resolved.rate;
+    const grossPaise = resolved.grossPaise;
+    const grossStr = formatPaiseToMoney(grossPaise);
     const currency = input.currency ?? 'INR';
 
     const calcRow: CommissionCalculationRow = {
@@ -445,7 +457,9 @@ export class FinanceService {
       event_date: eventDate,
       basis_amount: input.basisAmount,
       rate: rate.toFixed(6),
-      rate_type: 'PERCENTAGE',
+      rate_type: resolved.rateType,
+      slab_id: resolved.slabId,
+      product_category: input.productCategory ?? null,
       cap: null,
       gross_amount: grossStr,
       currency,
@@ -1445,6 +1459,318 @@ export class FinanceService {
 
   // --- MAPPERS ---
 
+  /**
+   * The rate for one qualifying event (P2-01; replaces the hard-coded 1.5% default).
+   *
+   * `customRate` still wins, so the manual route can price a correction by hand. Otherwise the plan's payout grid
+   * decides: the band is chosen by the lender's month-to-date disbursed volume in that product category, counting
+   * this event itself, so a month's first 4,00,000 sits in the 0 to 5,00,000 band. If no band covers the volume this
+   * throws rather than falling back to a default rate -- a silently wrong rate here is money the DSA never bills.
+   */
+  private async resolveCommissionRate(
+    tx: Tx,
+    tenantId: string,
+    plan: CommissionPlanRow,
+    input: CalculateCommissionInput,
+    basisPaise: bigint,
+    eventDate: Date,
+  ): Promise<{ rate: number; rateType: 'PERCENTAGE' | 'FLAT'; slabId: string | null; grossPaise: bigint }> {
+    if (input.customRate !== undefined && input.customRate !== null) {
+      return {
+        rate: input.customRate,
+        rateType: 'PERCENTAGE',
+        slabId: null,
+        grossPaise: computeAmountWithRate(basisPaise, input.customRate),
+      };
+    }
+
+    const productCategory = input.productCategory;
+    if (!productCategory) {
+      throw AppError.of(
+        'VALIDATION_ERROR',
+        'productCategory is required to choose a commission slab; pass customRate to price this event by hand.',
+      );
+    }
+
+    const { start, endExclusive } = monthBoundsUtc(eventDate);
+    const priorVolume = await this.deps.repository.sumEarnedBasisForLenderMonth(
+      tx,
+      tenantId,
+      input.lenderId,
+      productCategory,
+      start,
+      endExclusive,
+    );
+    const volumePaise = parseMoneyToPaise(priorVolume) + basisPaise;
+
+    const slabs = await this.deps.repository.findSlabsForLookup(
+      tx,
+      tenantId,
+      plan.id,
+      productCategory,
+      eventDate,
+    );
+    // volume_from is inclusive and volume_to exclusive, so a volume exactly on a boundary matches one band only.
+    const slab = slabs.find((candidate) => {
+      const from = parseMoneyToPaise(candidate.volume_from);
+      const to = candidate.volume_to === null ? null : parseMoneyToPaise(candidate.volume_to);
+      return volumePaise >= from && (to === null || volumePaise < to);
+    });
+    if (!slab) {
+      throw AppError.of(
+        'INVALID_STATE',
+        `No commission slab on plan ${plan.id} covers ${productCategory} at a monthly volume of ${formatPaiseToMoney(volumePaise)}.`,
+      );
+    }
+
+    if (slab.flat_amount !== null) {
+      return {
+        rate: 0,
+        rateType: 'FLAT',
+        slabId: slab.id,
+        grossPaise: parseMoneyToPaise(slab.flat_amount),
+      };
+    }
+
+    const rateBps = slab.rate_bps ?? 0;
+    return {
+      rate: rateBps / 10_000,
+      rateType: 'PERCENTAGE',
+      slabId: slab.id,
+      grossPaise: computeAmountWithBps(basisPaise, rateBps, plan.rounding_mode),
+    };
+  }
+
+  // --- P2-01 COMMISSION PLAN SLABS ---
+
+  /**
+   * A band of the lender's payout grid. Editing a grid is editing the plan, so it takes commission.plan.edit and is
+   * refused once the plan leaves DRAFT -- an ACTIVE plan's rates are what past calculations were priced on, and
+   * changing them under a calculation would make the invoice disagree with the record behind it.
+   */
+  async createCommissionPlanSlab(
+    tx: Tx,
+    ctx: RequestContext,
+    planId: string,
+    input: CreateCommissionPlanSlabInput,
+  ): Promise<CommissionPlanSlabResponse> {
+    this.assertPermission(ctx, 'commission.plan.edit');
+    const tenantId = ctx.principal.tenantId;
+
+    const plan = await this.deps.repository.findCommissionPlanById(tx, tenantId, planId);
+    if (!plan) throw AppError.of('NOT_FOUND', `Commission plan ${planId} not found.`);
+    if (plan.status !== 'DRAFT') throw commissionPlanNotDraft(planId, plan.status);
+
+    const parsed = CreateCommissionPlanSlabInputSchema.parse(input);
+    const now = new Date();
+    const row: CommissionPlanSlabRow = {
+      id: this.nextId('cslb'),
+      tenant_id: tenantId,
+      plan_id: planId,
+      product_category: parsed.productCategory,
+      volume_from: parsed.volumeFrom ?? '0',
+      volume_to: parsed.volumeTo ?? null,
+      rate_bps: parsed.rateBps ?? null,
+      flat_amount: parsed.flatAmount ?? null,
+      effective_from: new Date(parsed.effectiveFrom),
+      effective_to: parsed.effectiveTo ? new Date(parsed.effectiveTo) : null,
+      lock_version: 0,
+      created_at: now,
+      created_by: ctx.principal.id,
+      updated_at: now,
+      updated_by: ctx.principal.id,
+    };
+
+    await this.assertNoOverlap(tx, tenantId, planId, row, null);
+    await this.deps.repository.insertCommissionPlanSlab(tx, row);
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'commission_plan_slab.created',
+        entityType: 'commission_plan_slab',
+        entityId: row.id,
+        after: {
+          planId,
+          productCategory: row.product_category,
+          volumeFrom: row.volume_from,
+          volumeTo: row.volume_to,
+          rateBps: row.rate_bps,
+          flatAmount: row.flat_amount,
+        },
+      });
+    }
+    return this.toSlabResponse(row);
+  }
+
+  async listCommissionPlanSlabs(
+    tx: Tx,
+    ctx: RequestContext,
+    planId: string,
+  ): Promise<CommissionPlanSlabResponse[]> {
+    this.assertCommissionRead(ctx);
+    const rows = await this.deps.repository.listCommissionPlanSlabs(tx, ctx.principal.tenantId, planId);
+    return rows.map((row) => this.toSlabResponse(row));
+  }
+
+  async updateCommissionPlanSlab(
+    tx: Tx,
+    ctx: RequestContext,
+    planId: string,
+    slabId: string,
+    ifMatchVersion: number,
+    input: UpdateCommissionPlanSlabInput,
+  ): Promise<CommissionPlanSlabResponse> {
+    this.assertPermission(ctx, 'commission.plan.edit');
+    const tenantId = ctx.principal.tenantId;
+
+    const plan = await this.deps.repository.findCommissionPlanById(tx, tenantId, planId);
+    if (!plan) throw AppError.of('NOT_FOUND', `Commission plan ${planId} not found.`);
+    if (plan.status !== 'DRAFT') throw commissionPlanNotDraft(planId, plan.status);
+
+    const current = await this.deps.repository.findCommissionPlanSlabById(tx, tenantId, slabId);
+    if (!current || current.plan_id !== planId) {
+      throw AppError.of('NOT_FOUND', `Slab ${slabId} not found on plan ${planId}.`);
+    }
+
+    const merged: CommissionPlanSlabRow = {
+      ...current,
+      volume_from: input.volumeFrom ?? current.volume_from,
+      volume_to: input.volumeTo === undefined ? current.volume_to : input.volumeTo,
+      rate_bps: input.rateBps === undefined ? current.rate_bps : input.rateBps,
+      flat_amount: input.flatAmount === undefined ? current.flat_amount : input.flatAmount,
+      effective_from: input.effectiveFrom ? new Date(input.effectiveFrom) : current.effective_from,
+      effective_to:
+        input.effectiveTo === undefined
+          ? current.effective_to
+          : input.effectiveTo
+            ? new Date(input.effectiveTo)
+            : null,
+    };
+    if ((merged.rate_bps === null) === (merged.flat_amount === null)) {
+      throw AppError.of('VALIDATION_ERROR', 'A slab needs exactly one of rateBps or flatAmount.');
+    }
+    await this.assertNoOverlap(tx, tenantId, planId, merged, slabId);
+
+    const updated = await this.deps.repository.updateCommissionPlanSlab(tx, tenantId, slabId, ifMatchVersion, {
+      volume_from: merged.volume_from,
+      volume_to: merged.volume_to,
+      rate_bps: merged.rate_bps,
+      flat_amount: merged.flat_amount,
+      effective_from: merged.effective_from,
+      effective_to: merged.effective_to,
+      updated_by: ctx.principal.id,
+    });
+    if (!updated) throw AppError.of('VERSION_CONFLICT', `Slab version conflict for ${slabId}.`);
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'commission_plan_slab.updated',
+        entityType: 'commission_plan_slab',
+        entityId: slabId,
+        after: { planId, volumeFrom: updated.volume_from, volumeTo: updated.volume_to, rateBps: updated.rate_bps },
+      });
+    }
+    return this.toSlabResponse(updated);
+  }
+
+  /**
+   * The slab editor's preview. Pure apart from the slab read: it takes the volume as given rather than looking at what
+   * the lender has actually disbursed, so the finance team can try a band before any case exists.
+   */
+  async previewCommissionSlab(
+    tx: Tx,
+    ctx: RequestContext,
+    planId: string,
+    input: SlabPreviewInput,
+  ): Promise<SlabPreviewResponse> {
+    this.assertCommissionRead(ctx);
+    const tenantId = ctx.principal.tenantId;
+
+    const plan = await this.deps.repository.findCommissionPlanById(tx, tenantId, planId);
+    if (!plan) throw AppError.of('NOT_FOUND', `Commission plan ${planId} not found.`);
+
+    const onDate = input.asOf ? new Date(input.asOf) : new Date(ctx.now);
+    const slabs = await this.deps.repository.findSlabsForLookup(tx, tenantId, planId, input.productCategory, onDate);
+    const volumePaise = parseMoneyToPaise(input.monthlyVolume);
+    const slab = slabs.find((candidate) => {
+      const from = parseMoneyToPaise(candidate.volume_from);
+      const to = candidate.volume_to === null ? null : parseMoneyToPaise(candidate.volume_to);
+      return volumePaise >= from && (to === null || volumePaise < to);
+    });
+
+    if (!slab) {
+      return { slabId: null, rateBps: null, flatAmount: null, grossAmount: null, currency: 'INR', matched: false };
+    }
+    const basisPaise = parseMoneyToPaise(input.basisAmount);
+    const grossPaise =
+      slab.flat_amount !== null
+        ? parseMoneyToPaise(slab.flat_amount)
+        : computeAmountWithBps(basisPaise, slab.rate_bps ?? 0, plan.rounding_mode);
+
+    return {
+      slabId: slab.id,
+      rateBps: slab.rate_bps,
+      flatAmount: slab.flat_amount,
+      grossAmount: formatPaiseToMoney(grossPaise),
+      currency: 'INR',
+      matched: true,
+    };
+  }
+
+  /**
+   * Bands of one product category must not overlap on a date, or which rate applies would depend on row order. The
+   * database cannot express this (the ranges are open-ended and effective-dated), so it is checked here.
+   */
+  private async assertNoOverlap(
+    tx: Tx,
+    tenantId: string,
+    planId: string,
+    candidate: CommissionPlanSlabRow,
+    ignoreSlabId: string | null,
+  ): Promise<void> {
+    const siblings = await this.deps.repository.listCommissionPlanSlabs(tx, tenantId, planId);
+    const from = parseMoneyToPaise(candidate.volume_from);
+    const to = candidate.volume_to === null ? null : parseMoneyToPaise(candidate.volume_to);
+
+    for (const other of siblings) {
+      if (other.id === ignoreSlabId) continue;
+      if (other.product_category !== candidate.product_category) continue;
+      // Effective windows that do not meet cannot clash.
+      const otherEnds = other.effective_to;
+      const candidateEnds = candidate.effective_to;
+      if (otherEnds && otherEnds < candidate.effective_from) continue;
+      if (candidateEnds && candidateEnds < other.effective_from) continue;
+
+      const otherFrom = parseMoneyToPaise(other.volume_from);
+      const otherTo = other.volume_to === null ? null : parseMoneyToPaise(other.volume_to);
+      const startsBeforeOtherEnds = otherTo === null || from < otherTo;
+      const endsAfterOtherStarts = to === null || to > otherFrom;
+      if (startsBeforeOtherEnds && endsAfterOtherStarts) {
+        throw AppError.of(
+          'VALIDATION_ERROR',
+          `This band overlaps an existing ${candidate.product_category} band (${other.volume_from} to ${other.volume_to ?? 'open'}) on the same dates.`,
+        );
+      }
+    }
+  }
+
+  private toSlabResponse(row: CommissionPlanSlabRow): CommissionPlanSlabResponse {
+    return {
+      id: row.id as any,
+      planId: row.plan_id as any,
+      productCategory: row.product_category as any,
+      volumeFrom: String(row.volume_from),
+      volumeTo: row.volume_to === null ? null : String(row.volume_to),
+      rateBps: row.rate_bps,
+      flatAmount: row.flat_amount === null ? null : String(row.flat_amount),
+      effectiveFrom: row.effective_from.toISOString().slice(0, 10),
+      effectiveTo: row.effective_to ? row.effective_to.toISOString().slice(0, 10) : null,
+      lockVersion: row.lock_version,
+      createdAt: row.created_at.toISOString(),
+      createdBy: row.created_by,
+    };
+  }
+
   private toPlanResponse(row: CommissionPlanRow): CommissionPlanResponse {
     return {
       id: row.id as any,
@@ -1454,6 +1780,9 @@ export class FinanceService {
       roundingMode: row.rounding_mode,
       clawbackWindowDays: row.clawback_window_days,
       ruleSetId: row.rule_set_id,
+      taxTreatment: row.tax_treatment as any,
+      gstRateBps: row.gst_rate_bps,
+      tdsRateBps: row.tds_rate_bps,
       status: row.status as any,
       lockVersion: row.lock_version,
       createdAt: row.created_at.toISOString(),
@@ -1474,6 +1803,7 @@ export class FinanceService {
       basisAmount: String(row.basis_amount),
       rate: String(row.rate),
       rateType: row.rate_type,
+      slabId: row.slab_id,
       grossAmount: String(row.gross_amount),
       currency: row.currency,
       calcKind: row.calc_kind as any,

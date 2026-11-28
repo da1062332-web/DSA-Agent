@@ -1,6 +1,6 @@
-// /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011; MODULE 20 API-DOC-009; API-PRV-004).
-// Edit the applicant request while the status allows it, put the file on hold with a reason, manage parties and owners, archive
-// the documents and place a legal hold. Every change sends the version the screen loaded (If-Match), so a stale screen gets the
+// /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011).
+// Edit the applicant request while the status allows it, put the file on hold with a reason, and manage parties and owners.
+// Every change sends the version the screen loaded (If-Match), so a stale screen gets the
 // conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
 import {
   Alert,
@@ -25,7 +25,8 @@ import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from '../admi
 import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
-import { ArchiveCard, LegalHoldCard, OwnersCard, PartiesCard } from './ApplicationFileCards';
+import { OwnersCard, PartiesCard } from './ApplicationFileCards';
+import { CollateralCard } from './CollateralCard';
 import { EligibilityCard } from './EligibilityCard';
 import { LenderMatchesCard } from './LenderMatchesCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
@@ -100,6 +101,7 @@ export function ApplicationDetailPage() {
       <TransitionCard app={a} />
       <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
       <PartiesCard app={a} />
+      <CollateralCard app={a} />
       <OwnersCard app={a} />
       <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
       <EligibilityCard
@@ -113,8 +115,6 @@ export function ApplicationDetailPage() {
       />
       <LenderMatchesCard applicationId={a.id} productCategory={a.productCategory} />
       <ChecklistCard applicationId={a.id} />
-      <ArchiveCard applicationId={a.id} />
-      <LegalHoldCard applicationId={a.id} />
 
       <div data-slot="application.lender-cases">
         <LenderCasePanel applicationId={a.id} />

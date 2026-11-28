@@ -30,23 +30,10 @@ describe('Approvals page access (tenant realm)', () => {
     expect(html).not.toContain('approvals.tab');
   });
 
-  it('TEST-APR-006 a tenant administrator sees both tabs, starting on support access', () => {
-    const html = render('config.manage', 'data_correction.request', 'data_correction.approve');
+  it('TEST-APR-006 a tenant administrator sees the support access tab, and no data corrections tab', () => {
+    const html = render('config.manage');
     expect(html).toContain('approvals.tab.support');
-    expect(html).toContain('approvals.tab.corrections');
+    expect(html).not.toContain('approvals.tab.corrections');
     expect(html).not.toContain('approvals.noAccess');
-  });
-
-  it('TEST-APR-007 someone who may only request corrections sees the corrections tab, with the request button and no support tab', () => {
-    const html = render('data_correction.request');
-    expect(html).toContain('approvals.tab.corrections');
-    expect(html).not.toContain('approvals.tab.support');
-    expect(html).toContain('approvals.corrections.new');
-  });
-
-  it('TEST-APR-008 an approver who cannot request sees no request button', () => {
-    const html = render('data_correction.approve');
-    expect(html).toContain('approvals.tab.corrections');
-    expect(html).not.toContain('approvals.corrections.new');
   });
 });

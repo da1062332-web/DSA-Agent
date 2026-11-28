@@ -9,7 +9,7 @@ export const PLATFORM_TENANT_ID = 'ten_01M4ZG67WTS51Q0XN7F1Y9CCYG';
 
 export const PLATFORM_ROLE_CODES = ['ROLE-PLATFORM-SUPERADMIN', 'ROLE-PLATFORM-SUPPORT'] as const;
 
-/** Operator-only permissions. data_correction.* is not here: corrections are requested and approved inside a tenant. */
+/** Operator-only permissions. */
 export const PLATFORM_PERMISSIONS: readonly PermissionCode[] = [
   'platform.console',
   'platform.flags',

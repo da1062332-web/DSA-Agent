@@ -31,6 +31,7 @@ import {
   type TaskWorkQueueItem,
 } from './components';
 import { NotSet } from '../../ui/NotSet';
+import { displayMobile } from '../../shell/display';
 
 export function SalesExecDashboard() {
   const [dateScope, setDateScope] = useState<DateRangeScope>('month');
@@ -291,7 +292,7 @@ export function SalesExecDashboard() {
                   <TableRow key={l.id} hover>
                     <TableCell sx={{ fontWeight: 600 }}>{l.fullName}</TableCell>
                     <TableCell>{l.productCategory || 'LOAN'}</TableCell>
-                    <TableCell>{l.mobileMasked || <NotSet />}</TableCell>
+                    <TableCell>{displayMobile(l.mobileMasked) || <NotSet />}</TableCell>
                     <TableCell>
                       <Chip
                         label={l.state}

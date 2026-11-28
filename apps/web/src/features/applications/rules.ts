@@ -1,5 +1,6 @@
 // Application screen rules (owner: Dev 3; DSA Notion MODULE 16). These mirror the API so the screen only offers actions the
 // API accepts. The API stays the authority: it re-checks every rule and returns 409 when a rule no longer holds.
+import { freeTextNoS3 } from '@dsa/contracts';
 
 export type ApplicationStatus =
   | 'DRAFT'
@@ -75,7 +76,7 @@ export const isValidTenure = (v: string) => {
   return Number.isInteger(n) && n >= 1 && n <= 480;
 };
 
-// ---- Parties, owners, archive and legal hold (API-APP-006, API-APP-011, API-DOC-009, API-PRV-004) ----
+// ---- Parties and owners (API-APP-006, API-APP-011) ----
 
 /** Parties change only before the application is with a lender (API: PARTY_EDITABLE_STATUSES). */
 export const PARTY_EDITABLE: ApplicationStatus[] = ['DRAFT', 'DOCUMENTS_PENDING', 'UNDER_REVIEW'];
@@ -97,17 +98,8 @@ export const isValidAssignmentReason = (reason: string) => {
   return t.length >= 3 && t.length <= 200;
 };
 
-/** Same rule as the API: a legal hold needs a reason of 5 to 1000 characters. */
-export const isValidLegalHoldReason = (reason: string) => {
-  const t = reason.trim();
-  return t.length >= 5 && t.length <= 1000;
-};
-
 /** Free text must not carry a PAN, an Aadhaar number or an account number (the API refuses them with 422). */
-export const hasRestrictedNumber = (text: string) =>
-  /\b[A-Z]{5}[0-9]{4}[A-Z]\b/i.test(text) ||
-  /\b\d{4}\s?\d{4}\s?\d{4}\b/.test(text) ||
-  /\b\d{9,18}\b/.test(text);
+export const hasRestrictedNumber = (text: string) => freeTextNoS3(text);
 
 // ---- New application (API-APP-001) ----
 export const PRODUCT_CATEGORIES = ['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER'] as const;

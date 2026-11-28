@@ -62,10 +62,14 @@ import type {
   CreateCommissionPlanInput,
   CreateRecalculationProposalInput,
   QualifyingEvent,
+  ProductCategory,
   RecalculationProposal,
   RoundingMode,
 } from './types';
+import { PRODUCT_CATEGORIES } from './types';
 import { RowAction } from '../../shell/RowAction';
+import { NotSet } from '../../ui/NotSet';
+import { CommissionSlabEditor } from './CommissionSlabEditor';
 
 export function CommissionDashboardPage() {
   const me = useMe();
@@ -77,6 +81,8 @@ export function CommissionDashboardPage() {
   const canApproveRecalc = hasPermission(me.data, 'adjustment.approve');
 
   const [activeTab, setActiveTab] = useState<number>(0);
+  // P2-01: which plan's payout grid the Rate Slabs tab is showing.
+  const [slabPlanId, setSlabPlanId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -104,6 +110,10 @@ export function CommissionDashboardPage() {
   const [calcTrancheId, setCalcTrancheId] = useState<string>('');
   const [calcBasisAmount, setCalcBasisAmount] = useState<string>('5000000.00');
   const [calcRate, setCalcRate] = useState<number>(0.015);
+  // P2-01: the engine has no default rate any more. Either the plan's grid prices the tranche (and the product
+  // category decides which band), or the user states a rate explicitly for a correction.
+  const [calcPricing, setCalcPricing] = useState<'SLAB' | 'CUSTOM'>('SLAB');
+  const [calcProductCategory, setCalcProductCategory] = useState<ProductCategory>('PL');
   const [calcConnectorId, setCalcConnectorId] = useState<string>('con_001');
   const [calcConnectorShare, setCalcConnectorShare] = useState<number>(0.7);
   const [calculating, setCalculating] = useState<boolean>(false);
@@ -209,7 +219,9 @@ export function CommissionDashboardPage() {
         lenderId: calcLenderId,
         trancheId: calcTrancheId.trim(),
         basisAmount: calcBasisAmount.trim(),
-        customRate: calcRate,
+        ...(calcPricing === 'CUSTOM'
+          ? { customRate: calcRate }
+          : { productCategory: calcProductCategory }),
         connectorId: calcConnectorId.trim() || undefined,
         connectorShareRate: calcConnectorShare,
       };
@@ -382,9 +394,27 @@ export function CommissionDashboardPage() {
       accessor: (c) => `₹${Number(c.basisAmount).toLocaleString('en-IN')}`,
     },
     {
+      id: 'productCategory',
+      header: 'Product',
+      accessor: (c) => c.productCategory ?? <NotSet>Any</NotSet>,
+    },
+    {
       id: 'rate',
       header: 'Rate',
       accessor: (c) => `${(Number(c.rate) * 100).toFixed(2)}%`,
+    },
+    {
+      id: 'slab',
+      header: 'Priced by',
+      // Which band the rate came from. "Custom rate" is not a gap in the data: a manual correction has no band.
+      accessor: (c) =>
+        c.slabId ? (
+          <Typography variant="body2" title={c.slabId}>
+            Slab band
+          </Typography>
+        ) : (
+          <NotSet>Custom rate</NotSet>
+        ),
     },
     {
       id: 'grossAmount',
@@ -555,6 +585,7 @@ export function CommissionDashboardPage() {
           <Tab label="1. Commission Plans" />
           <Tab label="2. Calculations & Connector Payables" />
           <Tab label="3. Recalculation Proposals" />
+          <Tab label="4. Rate Slabs" />
         </Tabs>
       </Paper>
 
@@ -625,6 +656,47 @@ export function CommissionDashboardPage() {
                 emptyTitle="No recalculation proposals pending review."
               />
             </Card>
+          )}
+
+          {/* TAB 4: Rate Slabs (P2-01) */}
+          {activeTab === 3 && (
+            <Stack spacing={3}>
+              <Card>
+                <CardHeader
+                  title="Lender payout grid"
+                  subheader="Pick a plan to see the volume bands its calculations are priced on."
+                />
+                <Divider />
+                <CardContent>
+                  <TextField
+                    select
+                    size="small"
+                    label="Commission plan"
+                    value={slabPlanId}
+                    onChange={(e) => setSlabPlanId(e.target.value)}
+                    sx={{ minWidth: 340 }}
+                    inputProps={{ 'data-testid': 'commission.slab-plan' }}
+                  >
+                    {plans.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {lenders.find((l) => l.id === p.lenderId)?.name ?? p.lenderId} — {p.status}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </CardContent>
+              </Card>
+
+              {slabPlanId ? (
+                (() => {
+                  const selected = plans.find((p) => p.id === slabPlanId);
+                  return selected ? (
+                    <CommissionSlabEditor plan={selected} canEdit={canEditPlan} />
+                  ) : null;
+                })()
+              ) : (
+                <Alert severity="info">Select a commission plan above to see or edit its payout grid.</Alert>
+              )}
+            </Stack>
           )}
         </>
       )}
@@ -750,15 +822,46 @@ export function CommissionDashboardPage() {
                 onChange={(e) => setCalcBasisAmount(e.target.value)}
               />
               <TextField
-                required
+                select
                 fullWidth
-                type="number"
-                inputProps={{ min: 0, step: 0.001 }}
-                label="Commission Rate (e.g. 0.015 for 1.5%)"
-                value={calcRate}
-                onChange={(e) => setCalcRate(Math.max(0, Number(e.target.value)))}
-                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
-              />
+                label="Rate comes from"
+                value={calcPricing}
+                onChange={(e) => setCalcPricing(e.target.value as 'SLAB' | 'CUSTOM')}
+                inputProps={{ 'data-testid': 'commission.calc-pricing' }}
+              >
+                <MenuItem value="SLAB">The plan&apos;s payout grid</MenuItem>
+                <MenuItem value="CUSTOM">A rate I state here</MenuItem>
+              </TextField>
+              {calcPricing === 'SLAB' ? (
+                <TextField
+                  select
+                  required
+                  fullWidth
+                  label="Product"
+                  helperText="Decides which band of the grid applies, together with the lender's volume this month"
+                  value={calcProductCategory}
+                  onChange={(e) => setCalcProductCategory(e.target.value as ProductCategory)}
+                  inputProps={{ 'data-testid': 'commission.calc-product' }}
+                >
+                  {PRODUCT_CATEGORIES.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              ) : (
+                <TextField
+                  required
+                  fullWidth
+                  type="number"
+                  inputProps={{ min: 0, step: 0.001, 'data-testid': 'commission.calc-custom-rate' }}
+                  label="Commission Rate (e.g. 0.015 for 1.5%)"
+                  helperText="Recorded as a custom rate, with no band behind it"
+                  value={calcRate}
+                  onChange={(e) => setCalcRate(Math.max(0, Number(e.target.value)))}
+                  onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+                />
+              )}
               <ConnectorSelect
                 label="Attributed Connector"
                 placeholder="Optional: select sourcing partner..."

@@ -194,7 +194,7 @@ describe('Module 29 — Privacy and Consent (MOD-PRV)', () => {
           const res = await request(makeApp(refused)).get(route);
           expect(res.status, `${route} for ${refused.grants.map((g) => g.code).join('+')}`).toBe(403);
         }
-        // privacy.read opens it, and so does privacy.manage (the legal-hold and retention role).
+        // privacy.read opens it, and so does privacy.manage (the retention role).
         for (const allowed of [only('privacy.read'), only('privacy.manage')]) {
           const res = await request(makeApp(allowed)).get(route);
           expect(res.status, `${route} for ${allowed.grants.map((g) => g.code).join('+')}`).toBe(200);

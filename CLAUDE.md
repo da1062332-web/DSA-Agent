@@ -86,9 +86,9 @@ These are in scope and never dropped, whatever the slip (LR-1.6).
 
 **Data protection**
 
-- No S3-class data in the MVP (PAN, Aadhaar reference, DOB, UTR, loan account, bank details). Reject such fields.
-- Never log request bodies, fact values, mobile, email, names or tokens. Lists mask mobile and email.
-- Free-text fields reject PAN, Aadhaar and 9–18-digit account patterns with 422 VALIDATION_ERROR.
+- Sensitive identity fields (owner decision, 2026-11-28; see `docs/adr/ADR-4D-10-s3-field-policy.md`): PAN and date of birth may be stored as structured fields, only where the loan or customer workflow needs them, and always encrypted or masked. A full Aadhaar number is never stored; only a masked or reference form. UTR, loan account and bank details are not stored in the MVP: reject such fields.
+- Never log request bodies, fact values, mobile, email, names or tokens. Lists mask mobile and email. Never log or return a raw PAN, Aadhaar or date of birth: mask it before it reaches a log, an error response or an audit payload.
+- Free-text fields reject PAN, Aadhaar, 9–18-digit account patterns and a date of birth written after its key (dob, date of birth) with 422 VALIDATION_ERROR. The one definition is `freeTextNoS3` in `packages/contracts/src/s3-text.ts`; no other copy of these patterns may exist (TEST-SECRETS-06).
 - Synthetic data only, in every environment and fixture.
 
 **BRE**

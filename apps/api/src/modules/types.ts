@@ -1,6 +1,7 @@
 import type {
   ApplicationPort,
   AuditPort,
+  CommissionPort,
   ComplaintSubjectPort,
   LenderPort,
   LenderPolicyPort,
@@ -12,6 +13,7 @@ import type {
   DataSharingPort,
   DecisionPort,
   IdGenerator,
+  KycCheckPort,
   OutboxPort,
   PartyPort,
   TaskPort,
@@ -33,6 +35,8 @@ export interface ApiDeps {
   ids: IdGenerator;
   decisionPort?: DecisionPort;
   applicationPort?: ApplicationPort;
+  /** P2-01: lets invoices and reconciliation read earned commission without entering the finance module. */
+  commissionPort?: CommissionPort;
   /** Confirms complaint subjects exist in the caller tenant (MOD-GRV). Required for complaint intake; fails closed without it. */
   complaintSubjectPort?: ComplaintSubjectPort;
   /** Checks a product version for an application transition (T-APP-01). Provided by origination/catalogue. */
@@ -46,6 +50,8 @@ export interface ApiDeps {
   lenderCasePackagePort?: LenderCasePackagePort;
   /** Where files uploaded through a customer upload link are kept (document-sharing). The pack download reads them through it. */
   customerUploadStore?: { get(tenantId: string, storagePath: string): Promise<Buffer | null> };
+  /** Runs provider KYC checks (PAN, GST) for POST /v1/verifications/checks. Provided by integrations. Fails closed (503) without it. */
+  kycPort?: KycCheckPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;
@@ -59,8 +65,6 @@ export interface ApiDeps {
   sanctionRepository?: unknown;
   apiKeyStore?: unknown;
   partnerService?: unknown;
-  /** Where API clients are stored (ApiClientRepository). Without it the service keeps them in memory, for unit tests only. */
-  apiClientRepository?: unknown;
   webhookService?: unknown;
   targetRepository?: unknown;
   reportingRepository?: unknown;

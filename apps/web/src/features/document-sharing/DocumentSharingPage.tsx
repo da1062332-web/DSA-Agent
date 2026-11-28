@@ -41,8 +41,8 @@ import { DataTable, PageHeader } from '../../ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, errorText, newIdempotencyKey } from '../../api/client';
 import { Can } from '../../shell/Can';
-import { useMe, hasPermission } from '../../api/useMe';
-import { ApplicationName } from '../../shell/display';
+import { useMe, hasPermission, moduleEnabled } from '../../api/useMe';
+import { ApplicationName, displayEmail } from '../../shell/display';
 import type { ExternalShareRecord, UploadLinkRecord } from '@dsa/contracts';
 import { useLookup } from '../admin/api';
 import { ApplicationSelect } from '../applications/ApplicationSelect';
@@ -464,7 +464,7 @@ export function DocumentSharingPage() {
                           {share.recipientContact.name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {share.recipientContact.email}
+                          {displayEmail(share.recipientContact.email)}
                         </Typography>
                       </>
                     ),
@@ -709,7 +709,7 @@ export function DocumentSharingPage() {
                   >
                     <MenuItem value="LENDER">Lender</MenuItem>
                     <MenuItem value="CO_LENDER">Co-Lender</MenuItem>
-                    <MenuItem value="PARTNER">Partner</MenuItem>
+                    {moduleEnabled(me, 'MOD-CON') && <MenuItem value="PARTNER">Partner</MenuItem>}
                     <MenuItem value="AUDITOR">Auditor</MenuItem>
                   </Select>
                 </FormControl>

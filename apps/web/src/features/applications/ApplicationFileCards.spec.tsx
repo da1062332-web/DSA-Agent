@@ -4,7 +4,7 @@ import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as useMeModule from '../../api/useMe';
-import { ArchiveCard, LegalHoldCard, OwnersCard, PartiesCard } from './ApplicationFileCards';
+import { OwnersCard, PartiesCard } from './ApplicationFileCards';
 import { TransitionCard } from './ApplicationDetailPage';
 import { ApplicationsPage, type Application } from './ApplicationsPage';
 
@@ -82,24 +82,6 @@ describe('application file cards (TEST-UI-APP-01 to 07)', () => {
     expect(render(<OwnersCard app={{ ...APP, status: 'WITHDRAWN' }} />)).toBe('');
     grant(['application.read']);
     expect(render(<OwnersCard app={APP} />)).toBe('');
-  });
-
-  it('TEST-UI-APP-03 the document archive needs document.download', () => {
-    grant(['application.read', 'document.download']);
-    expect(render(<ArchiveCard applicationId="app_1" />)).toContain(
-      'data-testid="application.archive-request"',
-    );
-    grant(['application.read']);
-    expect(render(<ArchiveCard applicationId="app_1" />)).toBe('');
-  });
-
-  it('TEST-UI-APP-04 the legal hold card needs privacy.manage', () => {
-    grant(['application.read', 'privacy.manage']);
-    expect(render(<LegalHoldCard applicationId="app_1" />)).toContain(
-      'data-testid="application.legal-hold-place"',
-    );
-    grant(['application.read', 'application.update']);
-    expect(render(<LegalHoldCard applicationId="app_1" />)).toBe('');
   });
 
   it('TEST-UI-APP-06 send back needs application.review: rework from Under review, back to review from Ready', () => {

@@ -298,7 +298,7 @@ export const ROLE_GRANT_TRIMS: Record<string, string[]> = {
   'ROLE-SALES-EXEC': ['customer.read', 'privacy.read'],
   'ROLE-COMPLIANCE': ['attendance.read'],
   'ROLE-FINANCE-EXEC': ['attendance.read'],
-  'ROLE-COMMISSION-APPROVER': ['attendance.read'],
+  // M-104 also trimmed ROLE-COMMISSION-APPROVER, which M-105 retired and M-119 deleted: the seed has no such role.
 };
 
 // A tenant provisioned from this seed gets the sub-permissions (M-098) that an existing tenant got from the migration's backfill, so the
@@ -369,6 +369,8 @@ export const USERS: UserSeed[] = [
     roles: [{ code: 'ROLE-COMPLIANCE', scope: 'TENANT' }],
   },
   {
+    // Rule author and Rule approver were merged into Lender policy manager (M-105) and deleted (M-119). Two separate holders
+    // keep SOD-01 testable: one drafts a rule, the other approves it.
     handle: 'ruleauthor',
     displayName: 'Rekha Author',
     branch: 'MUM01',

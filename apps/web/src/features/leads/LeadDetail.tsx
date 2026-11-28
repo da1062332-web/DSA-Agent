@@ -29,7 +29,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { hasPermission, useMe } from '../../api/useMe';
+import { hasPermission, moduleEnabled, useMe } from '../../api/useMe';
 import { Can } from '../../shell/Can';
 import { UserPicker } from '../admin/components';
 import type { UserSummary } from '../admin/api';
@@ -46,7 +46,7 @@ import {
 import { leadActions } from './lead-actions';
 import { LeadFollowUps } from './LeadFollowUps';
 import { UserSelect } from '../../shell/selectors';
-import { CustomerName, ConnectorName, UserName } from '../../shell/display';
+import { CustomerName, ConnectorName, UserName, displayEmail, displayMobile } from '../../shell/display';
 import { PageHeader, AppButton } from '../../ui';
 import type { ConversionResponse } from './types';
 import { NotSet } from '../../ui/NotSet';
@@ -660,14 +660,14 @@ export function LeadDetail() {
                     Masked Mobile
                   </Typography>
                   <Typography variant="body1" fontWeight="medium">
-                    {lead.mobileMasked}
+                    {displayMobile(lead.mobileMasked)}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Masked Email
                   </Typography>
-                  <Typography variant="body1">{lead.emailMasked || <NotSet />}</Typography>
+                  <Typography variant="body1">{displayEmail(lead.emailMasked) || <NotSet />}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
@@ -773,14 +773,16 @@ export function LeadDetail() {
                   </Typography>
                   <Typography variant="body1">{lead.campaign || <NotSet />}</Typography>
                 </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Connector / Partner
-                  </Typography>
-                  <Box sx={{ mt: 0.5 }}>
-                    <ConnectorName id={lead.connectorId} fallback="Direct / Organic" typographyProps={{ variant: 'body1' }} />
+                {moduleEnabled(me.data, 'MOD-CON') && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Connector / Partner
+                    </Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <ConnectorName id={lead.connectorId} fallback="Direct / Organic" typographyProps={{ variant: 'body1' }} />
+                    </Box>
                   </Box>
-                </Box>
+                )}
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Referred At

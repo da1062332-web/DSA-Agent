@@ -72,14 +72,6 @@ const EnvSchema = z
      * Eliminates redundant db transactions on every request. Default: 30000 (30 seconds).
      */
     PRINCIPAL_CACHE_TTL_MS: z.coerce.number().int().nonnegative().default(30_000),
-    /**
-     * Turns on the data-correction executor (Release 2, SUB-ADM.07): an in-process worker that carries out APPROVED corrections using the
-     * reviewed scripts in correction-scripts.ts. Off unless set to true, because it writes to tenant data.
-     */
-    DATA_CORRECTION_EXECUTOR: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((v) => v === 'true'),
     /** Development switch: skip MFA. Refused unless this is a local Supabase stack outside production (see http/mfa-switch.ts). */
     DISABLE_MFA: z
       .enum(['true', 'false'])

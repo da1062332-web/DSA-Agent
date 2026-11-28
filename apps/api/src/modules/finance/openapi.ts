@@ -10,6 +10,11 @@ import {
   CommissionPlanResponseSchema,
   CreateClawbackInputSchema,
   CreateCommissionPlanInputSchema,
+  CreateCommissionPlanSlabInputSchema,
+  CommissionPlanSlabResponseSchema,
+  SlabPreviewInputSchema,
+  SlabPreviewResponseSchema,
+  UpdateCommissionPlanSlabInputSchema,
   CreatePayoutBatchInputSchema,
   CreatePayoutRequestInputSchema,
   CreateRecalculationProposalInputSchema,
@@ -42,6 +47,10 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
   registry.register('CommissionPayableResponse', CommissionPayableResponseSchema);
   registry.register('CreateRecalculationProposalInput', CreateRecalculationProposalInputSchema);
   registry.register('RecalculationProposalResponse', RecalculationProposalResponseSchema);
+  registry.register('CreateCommissionPlanSlabInput', CreateCommissionPlanSlabInputSchema);
+  registry.register('CommissionPlanSlabResponse', CommissionPlanSlabResponseSchema);
+  registry.register('SlabPreviewInput', SlabPreviewInputSchema);
+  registry.register('SlabPreviewResponse', SlabPreviewResponseSchema);
   registry.register('CreatePayoutRequestInput', CreatePayoutRequestInputSchema);
   registry.register('PayoutRequestResponse', PayoutRequestResponseSchema);
   registry.register('PayoutBatchResponse', PayoutBatchResponseSchema);
@@ -80,6 +89,87 @@ export function registerOpenApi(registry: OpenAPIRegistry): void {
       200: {
         description: 'Plan updated',
         content: { 'application/json': { schema: CommissionPlanResponseSchema } },
+      },
+    },
+  });
+
+  // P2-01 / TASK-141: the lender's payout grid. No API- number is assigned in the register yet, so these use the
+  // descriptive operationId style other modules use for the same reason. Each is swept for tenant isolation —
+  // planId resolves through the 'commission-plans' segment and slabId through 'slabs' (tests/isolation/sweep-map.ts).
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/commission-plans/{planId}/slabs',
+    operationId: 'COM-POST-COMMISSION-PLANS-BY-ID-SLABS',
+    summary: 'Add a volume band to a commission plan (P2-01)',
+    tags: ['MOD-COM Commission'],
+    request: {
+      params: z.object({ planId: z.string() }),
+      body: { content: { 'application/json': { schema: CreateCommissionPlanSlabInputSchema } }, required: true },
+    },
+    responses: {
+      201: {
+        description: 'Band added',
+        content: { 'application/json': { schema: CommissionPlanSlabResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/commission-plans/{planId}/slabs',
+    operationId: 'COM-GET-COMMISSION-PLANS-BY-ID-SLABS',
+    summary: "List a commission plan's volume bands (P2-01)",
+    tags: ['MOD-COM Commission'],
+    request: { params: z.object({ planId: z.string() }) },
+    responses: {
+      200: {
+        description: 'Bands',
+        content: {
+          'application/json': {
+            schema: z.object({
+              data: z.array(CommissionPlanSlabResponseSchema),
+              meta: z.object({ nextCursor: z.string().nullable(), limit: z.number().int() }),
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/commission-plans/{planId}/slabs/preview',
+    operationId: 'COM-POST-COMMISSION-PLANS-BY-ID-SLABS-PREVIEW',
+    summary: 'What a volume would be priced at, without writing anything (P2-01)',
+    tags: ['MOD-COM Commission'],
+    request: {
+      params: z.object({ planId: z.string() }),
+      body: { content: { 'application/json': { schema: SlabPreviewInputSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        description: 'The band that would apply, or matched=false when none does',
+        content: { 'application/json': { schema: SlabPreviewResponseSchema } },
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/commission-plans/{planId}/slabs/{slabId}',
+    operationId: 'COM-PATCH-COMMISSION-PLANS-BY-ID-SLABS-BY-ID',
+    summary: 'Change or retire a volume band (P2-01)',
+    tags: ['MOD-COM Commission'],
+    request: {
+      headers: z.object({ 'If-Match': z.string() }),
+      params: z.object({ planId: z.string(), slabId: z.string() }),
+      body: { content: { 'application/json': { schema: UpdateCommissionPlanSlabInputSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        description: 'Band updated',
+        content: { 'application/json': { schema: CommissionPlanSlabResponseSchema } },
       },
     },
   });

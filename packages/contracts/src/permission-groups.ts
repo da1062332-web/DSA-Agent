@@ -39,7 +39,6 @@ export const LEGACY_PARENTS: Record<SubPermissionCode, readonly PermissionCode[]
   'user.invite': ['user.manage'],
   'user.offboard': ['user.manage'],
   'role.read': ['role.manage', 'user.manage'],
-  'access_review.manage': ['user.manage'],
   // CRM
   'activity.read': ['lead.read', 'customer.read', 'application.read', 'activity.create'],
   'complaint.read': ['complaint.create', 'complaint.manage'],
@@ -59,7 +58,6 @@ export const LEGACY_PARENTS: Record<SubPermissionCode, readonly PermissionCode[]
   'target.read': ['report.read', 'target.manage'],
   // Audit, security, privacy
   'audit.seal': ['audit.read'],
-  'security.read': ['security.incident'],
   'privacy.read': ['audit.read', 'customer.read', 'privacy.manage'],
   // Integrations and data
   'import.read': ['import.run', 'config.manage'],
@@ -358,7 +356,6 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
     label: 'Audit, security and privacy',
     features: [
       { id: 'audit', label: 'Audit', codes: ['audit.read', 'audit.export_evidence', 'audit.seal'] },
-      { id: 'security', label: 'Security', codes: ['security.read', 'security.incident', 'security.vuln'] },
       { id: 'privacy', label: 'Privacy', codes: ['privacy.read', 'privacy.manage'] },
     ],
   },
@@ -372,14 +369,9 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
       {
         id: 'users',
         label: 'Users',
-        codes: ['user.read', 'user.invite', 'user.offboard', 'user.manage', 'access_review.manage'],
+        codes: ['user.read', 'user.invite', 'user.offboard', 'user.manage'],
       },
       { id: 'roles', label: 'Roles', codes: ['role.read', 'role.manage'] },
-      {
-        id: 'data-corrections',
-        label: 'Data corrections',
-        codes: ['data_correction.request', 'data_correction.approve'],
-      },
     ],
   },
   {

@@ -20,6 +20,7 @@ vi.mock('../../api/useMe', () => ({
     isLoading: false,
   }),
   hasPermission: () => true,
+  moduleEnabled: () => true,
 }));
 
 vi.mock('./api', () => ({

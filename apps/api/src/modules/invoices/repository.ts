@@ -19,10 +19,31 @@ export type CreateInvoiceData = Omit<CreateInvoiceInput, 'taxFields' | 'calculat
   createdBy: string;
   taxFields?: TaxFields;
   calculationIds?: string[];
+  /** P2-01: the month a commission invoice bills, YYYY-MM. Null for invoices recorded by hand. */
+  periodMonth?: string | null;
 };
 
 export interface InvoiceRepository {
   createInvoice(tx: Tx, tenantId: string, invoice: CreateInvoiceData): Promise<InvoiceRecord>;
+  /**
+   * P2-01. The next number in a series, allocated inside the caller's transaction so an abandoned draft never burns
+   * one and two callers cannot take the same number. CGST Rule 46(b): a consecutive serial, at most 16 characters,
+   * unique for a financial year.
+   */
+  allocateInvoiceNumber(
+    tx: Tx,
+    tenantId: string,
+    seriesPrefix: string,
+    fyLabel: string,
+    actorId: string,
+  ): Promise<string>;
+  /** P2-01. The live commission invoice already billing this party for this month, if there is one. */
+  findInvoiceByPeriod(
+    tx: Tx,
+    tenantId: string,
+    partyId: string,
+    periodMonth: string,
+  ): Promise<InvoiceRecord | null>;
   findInvoiceById(tx: Tx, tenantId: string, id: string): Promise<InvoiceRecord | null>;
   findInvoiceByNumber(
     tx: Tx,
@@ -109,6 +130,7 @@ function mapInvoiceRow(row: InvoiceRow): InvoiceRecord {
     partyId: row.party_id,
     partyName: row.party_name,
     notes: row.notes,
+    periodMonth: row.period_month ?? null,
     lockVersion: row.lock_version,
     createdAt: toIsoTimestamp(row.created_at),
     createdBy: row.created_by,
@@ -138,6 +160,53 @@ function mapLedgerEntryRow(row: LedgerEntryRow): LedgerEntryRecord {
 }
 
 export class SqlInvoiceRepository implements InvoiceRepository {
+  async allocateInvoiceNumber(
+    tx: Tx,
+    tenantId: string,
+    seriesPrefix: string,
+    fyLabel: string,
+    actorId: string,
+  ): Promise<string> {
+    // ON CONFLICT ... DO UPDATE takes the row lock and returns the value in one statement, so two concurrent callers
+    // serialise on the row rather than racing between a SELECT and an UPDATE.
+    const res = await sql<{ next_value: number }>`
+      INSERT INTO invoice_number_series (
+        id, tenant_id, series_prefix, fy_label, next_value, lock_version,
+        created_at, created_by, updated_at, updated_by
+      ) VALUES (
+        ${`invs_${tenantId}_${seriesPrefix}_${fyLabel}`}, ${tenantId}, ${seriesPrefix}, ${fyLabel}, 2, 0,
+        now(), ${actorId}, now(), ${actorId}
+      )
+      ON CONFLICT (tenant_id, series_prefix, fy_label) DO UPDATE
+        SET next_value = invoice_number_series.next_value + 1,
+            lock_version = invoice_number_series.lock_version + 1,
+            updated_at = now(),
+            updated_by = ${actorId}
+      RETURNING next_value
+    `.execute(tx);
+    const after = res.rows[0]?.next_value;
+    if (after === undefined) throw AppError.of('INTERNAL_ERROR', 'Failed to allocate an invoice number');
+    // The row now holds the NEXT number, so the one just taken is one less.
+    const taken = after - 1;
+    return `${seriesPrefix}/${fyLabel}/${String(taken).padStart(6, '0')}`;
+  }
+
+  async findInvoiceByPeriod(
+    tx: Tx,
+    tenantId: string,
+    partyId: string,
+    periodMonth: string,
+  ): Promise<InvoiceRecord | null> {
+    const res = await sql<InvoiceRow>`
+      SELECT * FROM invoice
+      WHERE tenant_id = ${tenantId} AND party_id = ${partyId} AND period_month = ${periodMonth}
+        AND direction = 'TO_LENDER' AND status <> 'VOID'
+      LIMIT 1
+    `.execute(tx);
+    const row = res.rows[0];
+    return row ? mapInvoiceRow(row) : null;
+  }
+
   async createInvoice(tx: Tx, tenantId: string, invoice: CreateInvoiceData): Promise<InvoiceRecord> {
     const taxFieldsJson = JSON.stringify(invoice.taxFields ?? {});
     const calculationIds = invoice.calculationIds ?? [];
@@ -146,13 +215,14 @@ export class SqlInvoiceRepository implements InvoiceRepository {
       INSERT INTO invoice (
         id, tenant_id, direction, number, date, due_date,
         amount, currency, tax_fields, status, calculation_ids,
-        party_id, party_name, notes, lock_version,
+        party_id, party_name, notes, period_month, lock_version,
         created_at, created_by, updated_at, updated_by
       ) VALUES (
         ${invoice.id}, ${tenantId}, ${invoice.direction}, ${invoice.number}, ${invoice.date}::date,
         ${invoice.dueDate ? sql`${invoice.dueDate}::date` : null},
         ${invoice.amount}, ${invoice.currency ?? 'INR'}, ${taxFieldsJson}::jsonb, 'DRAFT', ${calculationIds},
-        ${invoice.partyId}, ${invoice.partyName ?? null}, ${invoice.notes ?? null}, 0,
+        ${invoice.partyId}, ${invoice.partyName ?? null}, ${invoice.notes ?? null},
+        ${invoice.periodMonth ?? null}, 0,
         now(), ${invoice.createdBy}, now(), ${invoice.createdBy}
       )
       RETURNING *
@@ -460,6 +530,38 @@ export class SqlInvoiceRepository implements InvoiceRepository {
 export class InMemoryInvoiceRepository implements InvoiceRepository {
   private invoices: InvoiceRecord[] = [];
   private ledgerEntries: LedgerEntryRecord[] = [];
+  private series = new Map<string, number>();
+
+  async allocateInvoiceNumber(
+    _tx: Tx,
+    tenantId: string,
+    seriesPrefix: string,
+    fyLabel: string,
+    _actorId: string,
+  ): Promise<string> {
+    const key = `${tenantId}|${seriesPrefix}|${fyLabel}`;
+    const taken = this.series.get(key) ?? 1;
+    this.series.set(key, taken + 1);
+    return `${seriesPrefix}/${fyLabel}/${String(taken).padStart(6, '0')}`;
+  }
+
+  async findInvoiceByPeriod(
+    _tx: Tx,
+    tenantId: string,
+    partyId: string,
+    periodMonth: string,
+  ): Promise<InvoiceRecord | null> {
+    return (
+      this.invoices.find(
+        (inv) =>
+          inv.tenantId === tenantId &&
+          inv.partyId === partyId &&
+          inv.periodMonth === periodMonth &&
+          inv.direction === 'TO_LENDER' &&
+          inv.status !== 'VOID',
+      ) ?? null
+    );
+  }
 
   async createInvoice(_tx: Tx, tenantId: string, invoice: CreateInvoiceData): Promise<InvoiceRecord> {
     const existing = this.invoices.find(
@@ -486,6 +588,7 @@ export class InMemoryInvoiceRepository implements InvoiceRepository {
       partyId: invoice.partyId,
       partyName: invoice.partyName ?? null,
       notes: invoice.notes ?? null,
+      periodMonth: invoice.periodMonth ?? null,
       lockVersion: 0,
       createdAt: now,
       createdBy: invoice.createdBy,

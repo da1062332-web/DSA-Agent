@@ -11,7 +11,32 @@ export interface CommissionPlanRow {
   rounding_mode: string;
   clawback_window_days: number;
   rule_set_id: string | null;
+  // P2-01 (migration 0141): how the lender invoice is taxed, and the rates it uses, in basis points.
+  tax_treatment: string;
+  gst_rate_bps: number;
+  tds_rate_bps: number;
   status: string;
+  lock_version: number;
+  created_at: Date;
+  created_by: string;
+  updated_at: Date;
+  updated_by: string;
+}
+
+/** P2-01 (migration 0141): one band of a lender's payout grid. */
+export interface CommissionPlanSlabRow {
+  id: string;
+  tenant_id: string;
+  plan_id: string;
+  product_category: string;
+  /** Inclusive lower bound; volume_to is exclusive and null on the open-ended top band. */
+  volume_from: string;
+  volume_to: string | null;
+  /** Exactly one of rate_bps and flat_amount is set (enforced by commission_plan_slab_one_rate). */
+  rate_bps: number | null;
+  flat_amount: string | null;
+  effective_from: Date;
+  effective_to: Date | null;
   lock_version: number;
   created_at: Date;
   created_by: string;
@@ -30,6 +55,10 @@ export interface CommissionCalculationRow {
   basis_amount: string;
   rate: string;
   rate_type: string;
+  /** P2-01: the slab that produced the rate; null for a custom rate or a pre-slab calculation. */
+  slab_id: string | null;
+  /** P2-01: which product the commission was earned on. Monthly volume bands are measured per category. */
+  product_category: string | null;
   cap: string | null;
   gross_amount: string;
   currency: string;
@@ -182,6 +211,47 @@ export interface FinanceRepository {
   ): Promise<CommissionPlanRow | null>;
 
   // Calculations & Payables
+  // --- P2-01 slabs ---
+  insertCommissionPlanSlab(tx: Tx, row: CommissionPlanSlabRow): Promise<void>;
+  findCommissionPlanSlabById(tx: Tx, tenantId: string, id: string): Promise<CommissionPlanSlabRow | null>;
+  listCommissionPlanSlabs(tx: Tx, tenantId: string, planId: string): Promise<CommissionPlanSlabRow[]>;
+  updateCommissionPlanSlab(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+    expectedLockVersion: number,
+    updates: Partial<CommissionPlanSlabRow>,
+  ): Promise<CommissionPlanSlabRow | null>;
+  /** Bands effective on `onDate` for one plan and product category, ordered by volume_from. */
+  findSlabsForLookup(
+    tx: Tx,
+    tenantId: string,
+    planId: string,
+    productCategory: string,
+    onDate: Date,
+  ): Promise<CommissionPlanSlabRow[]>;
+  /**
+   * Disbursed basis already earned this calendar month for one lender and product category, as a decimal string.
+   * Reversed and superseded calculations do not count toward the band.
+   */
+  sumEarnedBasisForLenderMonth(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    productCategory: string,
+    monthStart: Date,
+    monthEndExclusive: Date,
+  ): Promise<string>;
+
+  /** Every EARNED calculation for one lender in a date range, for the monthly lender invoice (P2-01). */
+  listEarnedCalculationsForMonth(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    monthStart: Date,
+    monthEndExclusive: Date,
+  ): Promise<CommissionCalculationRow[]>;
+
   insertCommissionCalculation(tx: Tx, row: CommissionCalculationRow): Promise<void>;
   findCommissionCalculationById(
     tx: Tx,
@@ -296,12 +366,13 @@ export class SqlFinanceRepository implements FinanceRepository {
     await sql`
       INSERT INTO commission_plan (
         id, tenant_id, lender_id, qualifying_event, basis, rounding_mode,
-        clawback_window_days, rule_set_id, status, lock_version,
-        created_at, created_by, updated_at, updated_by
+        clawback_window_days, rule_set_id, tax_treatment, gst_rate_bps, tds_rate_bps,
+        status, lock_version, created_at, created_by, updated_at, updated_by
       ) VALUES (
         ${row.id}, ${row.tenant_id}, ${row.lender_id}, ${row.qualifying_event},
         ${row.basis}, ${row.rounding_mode}, ${row.clawback_window_days},
-        ${row.rule_set_id}, ${row.status}, ${row.lock_version},
+        ${row.rule_set_id}, ${row.tax_treatment}, ${row.gst_rate_bps}, ${row.tds_rate_bps},
+        ${row.status}, ${row.lock_version},
         ${row.created_at}, ${row.created_by}, ${row.updated_at}, ${row.updated_by}
       )
     `.execute(tx);
@@ -401,17 +472,146 @@ export class SqlFinanceRepository implements FinanceRepository {
     return res.rows[0] ?? null;
   }
 
+  // --- P2-01 slabs ---
+
+  async insertCommissionPlanSlab(tx: Tx, row: CommissionPlanSlabRow): Promise<void> {
+    await sql`
+      INSERT INTO commission_plan_slab (
+        id, tenant_id, plan_id, product_category, volume_from, volume_to,
+        rate_bps, flat_amount, effective_from, effective_to, lock_version,
+        created_at, created_by, updated_at, updated_by
+      ) VALUES (
+        ${row.id}, ${row.tenant_id}, ${row.plan_id}, ${row.product_category},
+        ${row.volume_from}, ${row.volume_to}, ${row.rate_bps}, ${row.flat_amount},
+        ${row.effective_from}, ${row.effective_to}, ${row.lock_version},
+        ${row.created_at}, ${row.created_by}, ${row.updated_at}, ${row.updated_by}
+      )
+    `.execute(tx);
+  }
+
+  async findCommissionPlanSlabById(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+  ): Promise<CommissionPlanSlabRow | null> {
+    const res = await sql<CommissionPlanSlabRow>`
+      SELECT * FROM commission_plan_slab WHERE tenant_id = ${tenantId} AND id = ${id}
+    `.execute(tx);
+    return res.rows[0] ?? null;
+  }
+
+  async listCommissionPlanSlabs(
+    tx: Tx,
+    tenantId: string,
+    planId: string,
+  ): Promise<CommissionPlanSlabRow[]> {
+    const res = await sql<CommissionPlanSlabRow>`
+      SELECT * FROM commission_plan_slab
+      WHERE tenant_id = ${tenantId} AND plan_id = ${planId}
+      ORDER BY product_category, effective_from, volume_from
+    `.execute(tx);
+    return res.rows;
+  }
+
+  async updateCommissionPlanSlab(
+    tx: Tx,
+    tenantId: string,
+    id: string,
+    expectedLockVersion: number,
+    updates: Partial<CommissionPlanSlabRow>,
+  ): Promise<CommissionPlanSlabRow | null> {
+    // rate_bps and flat_amount are set, not COALESCEd: switching a band from a percentage to a flat amount has to be
+    // able to write null into the other column, and commission_plan_slab_one_rate refuses the pair being both or neither.
+    const res = await sql<CommissionPlanSlabRow>`
+      UPDATE commission_plan_slab
+      SET
+        volume_from = COALESCE(${updates.volume_from ?? null}, volume_from),
+        volume_to = ${updates.volume_to === undefined ? sql`volume_to` : updates.volume_to},
+        rate_bps = ${updates.rate_bps === undefined ? sql`rate_bps` : updates.rate_bps},
+        flat_amount = ${updates.flat_amount === undefined ? sql`flat_amount` : updates.flat_amount},
+        effective_from = COALESCE(${updates.effective_from ?? null}, effective_from),
+        effective_to = ${updates.effective_to === undefined ? sql`effective_to` : updates.effective_to},
+        lock_version = lock_version + 1,
+        updated_at = now(),
+        updated_by = COALESCE(${updates.updated_by ?? 'system'}, updated_by)
+      WHERE tenant_id = ${tenantId} AND id = ${id} AND lock_version = ${expectedLockVersion}
+      RETURNING *
+    `.execute(tx);
+    return res.rows[0] ?? null;
+  }
+
+  async findSlabsForLookup(
+    tx: Tx,
+    tenantId: string,
+    planId: string,
+    productCategory: string,
+    onDate: Date,
+  ): Promise<CommissionPlanSlabRow[]> {
+    const res = await sql<CommissionPlanSlabRow>`
+      SELECT * FROM commission_plan_slab
+      WHERE tenant_id = ${tenantId}
+        AND plan_id = ${planId}
+        AND product_category = ${productCategory}
+        AND effective_from <= ${onDate}
+        AND (effective_to IS NULL OR effective_to >= ${onDate})
+      ORDER BY volume_from
+    `.execute(tx);
+    return res.rows;
+  }
+
+  async sumEarnedBasisForLenderMonth(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    productCategory: string,
+    monthStart: Date,
+    monthEndExclusive: Date,
+  ): Promise<string> {
+    const res = await sql<{ total: string }>`
+      SELECT COALESCE(SUM(basis_amount), 0)::text AS total
+      FROM commission_calculation
+      WHERE tenant_id = ${tenantId}
+        AND lender_id = ${lenderId}
+        AND product_category = ${productCategory}
+        AND calc_kind = 'EARNED'
+        AND status NOT IN ('REVERSED', 'SUPERSEDED')
+        AND event_date >= ${monthStart}
+        AND event_date < ${monthEndExclusive}
+    `.execute(tx);
+    return res.rows[0]?.total ?? '0';
+  }
+
+  async listEarnedCalculationsForMonth(
+    tx: Tx,
+    tenantId: string,
+    lenderId: string,
+    monthStart: Date,
+    monthEndExclusive: Date,
+  ): Promise<CommissionCalculationRow[]> {
+    const res = await sql<CommissionCalculationRow>`
+      SELECT * FROM commission_calculation
+      WHERE tenant_id = ${tenantId}
+        AND lender_id = ${lenderId}
+        AND calc_kind = 'EARNED'
+        AND status NOT IN ('REVERSED', 'SUPERSEDED')
+        AND event_date >= ${monthStart}
+        AND event_date < ${monthEndExclusive}
+      ORDER BY event_date, id
+    `.execute(tx);
+    return res.rows;
+  }
+
   async insertCommissionCalculation(tx: Tx, row: CommissionCalculationRow): Promise<void> {
     await sql`
       INSERT INTO commission_calculation (
         id, tenant_id, lender_id, tranche_id, application_id, lender_case_id,
-        event_date, basis_amount, rate, rate_type, cap, gross_amount, currency,
+        event_date, basis_amount, rate, rate_type, slab_id, product_category, cap, gross_amount, currency,
         calc_kind, rule_set_version_id, decision_record_id, inputs_hash, status,
         supersedes_id, lock_version, created_at, created_by, updated_at, updated_by
       ) VALUES (
         ${row.id}, ${row.tenant_id}, ${row.lender_id}, ${row.tranche_id},
         ${row.application_id}, ${row.lender_case_id}, ${row.event_date},
-        ${row.basis_amount}, ${row.rate}, ${row.rate_type}, ${row.cap},
+        ${row.basis_amount}, ${row.rate}, ${row.rate_type}, ${row.slab_id}, ${row.product_category}, ${row.cap},
         ${row.gross_amount}, ${row.currency}, ${row.calc_kind},
         ${row.rule_set_version_id}, ${row.decision_record_id}, ${row.inputs_hash},
         ${row.status}, ${row.supersedes_id}, ${row.lock_version},

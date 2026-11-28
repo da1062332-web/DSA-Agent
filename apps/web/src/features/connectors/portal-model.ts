@@ -1,5 +1,6 @@
 // The partner portal's data shapes and rules, kept free of rendering so they are tested directly. The shapes are what /portal/v1 returns.
 // Keep the dispute rules in step with apps/api/src/modules/finance/connector-portal.ts: the API has the final say.
+import { freeTextNoS3 } from '@dsa/contracts';
 
 export interface PortalMoney {
   amount: string;
@@ -141,15 +142,14 @@ const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
 export const disputeCategoryLabel = (category: string | null): string =>
   category ? (CATEGORY_LABEL[category] ?? category) : '—';
 
-// The same patterns the API refuses in a dispute reason: a PAN, a 12-digit number (Aadhaar-shaped) and an account number.
-const IDENTITY_OR_ACCOUNT_NUMBER = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 
 /** Why a dispute reason cannot be sent, or null when it can. */
 export function disputeReasonError(text: string): string | null {
   const trimmed = text.trim();
   if (trimmed.length < 5) return 'Describe the problem in at least 5 characters.';
   if (trimmed.length > 500) return 'Keep the description to 500 characters.';
-  if (IDENTITY_OR_ACCOUNT_NUMBER.some((p) => p.test(trimmed))) {
+  // The same rule the API applies to a dispute reason (freeTextNoS3).
+  if (freeTextNoS3(trimmed)) {
     return 'Do not include PAN, Aadhaar or account numbers.';
   }
   return null;

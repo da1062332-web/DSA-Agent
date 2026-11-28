@@ -7,7 +7,7 @@ import React from 'react';
 import { Autocomplete, Box, TextField, Typography } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, errorText } from '../../api/client';
-import { useMe, hasPermission } from '../../api/useMe';
+import { useMe, hasPermission, moduleEnabled } from '../../api/useMe';
 import type { ConnectorLookupItem } from '@dsa/contracts';
 
 // The permissions the API accepts for the lookup (ConnectorService.lookupConnectors). The API decides; this list only decides
@@ -52,7 +52,9 @@ export function ConnectorSelect({
   allowFreeText = true,
 }: ConnectorSelectProps) {
   const me = useMe();
-  const canLookup = LOOKUP_PERMISSIONS.some((code) => hasPermission(me.data, code));
+  // With connectors switched off for the tenant (MOD-CON) the picker is not offered: the API would refuse the lookup.
+  const connectorsOn = moduleEnabled(me.data, 'MOD-CON');
+  const canLookup = connectorsOn && LOOKUP_PERMISSIONS.some((code) => hasPermission(me.data, code));
 
   const query = useQuery({
     queryKey: ['connectors', 'lookup', status],
@@ -71,6 +73,8 @@ export function ConnectorSelect({
 
   const connectors = query.data ?? [];
   const selectedConnector = connectors.find((c) => c.id === value) ?? null;
+
+  if (!connectorsOn) return null;
 
   if (!canLookup) {
     return (

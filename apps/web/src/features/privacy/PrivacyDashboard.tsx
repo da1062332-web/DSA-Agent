@@ -38,7 +38,8 @@ import { DataTable, PageHeader } from '../../ui';
 import type { ConsentPurposeCode, DataSharingRecord, VerifyConsentResult } from '@dsa/contracts';
 import { checkConsent, fetchDataSharingRecords, fetchPrivacyStats } from './api';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
-import { ApplicationName, LenderName } from '../../shell/display';
+import { ApplicationName, LenderName, displayEmail, displayMobile, displayPan } from '../../shell/display';
+import { containsAadhaar } from '@dsa/contracts';
 
 const KNOWN_FIELD_LABELS: Record<string, string> = {
   name: 'Full Name',
@@ -156,33 +157,7 @@ export function PrivacyDashboard(): React.ReactElement {
     });
   };
 
-  // Masking Helpers for Sandbox
-  const maskPhone = (phone: string): string => {
-    const cleaned = phone.replace(/[^0-9+]/g, '');
-    if (cleaned.length < 8) return cleaned;
-    const prefix = cleaned.slice(0, 3);
-    const suffix = cleaned.slice(-4);
-    return `${prefix} ******${suffix}`;
-  };
-
-  const maskEmail = (email: string): string => {
-    const parts = email.split('@');
-    if (parts.length !== 2 || !parts[0] || !parts[1]) return email;
-    const user = parts[0];
-    const domain = parts[1];
-    const maskedUser = user.length <= 2 ? `${user}***` : `${user[0]}***${user[user.length - 1]}`;
-    return `${maskedUser}@${domain}`;
-  };
-
-  const maskPan = (pan: string): string => {
-    const cleaned = pan.toUpperCase().trim();
-    if (cleaned.length !== 10) return cleaned;
-    return `${cleaned.slice(0, 5)}****${cleaned.slice(-1)}`;
-  };
-
-  const detectAadhaarLeak = (text: string): boolean => {
-    return /\b\d{4}[ -]?\d{4}[ -]?\d{4}\b/.test(text) || /\b\d{12}\b/.test(text);
-  };
+  const detectAadhaarLeak = (text: string): boolean => containsAadhaar(text);
 
   // Filtered sharing records
   const filteredSharingRecords = (sharingData?.items || []).filter((r) => {
@@ -375,7 +350,7 @@ export function PrivacyDashboard(): React.ReactElement {
           <Tab label="Data Sharing Inventory (ENT-100)" id="tab-sharing" />
           <Tab label="Consent Verification Auditor" id="tab-consent" />
           <Tab label="Data Classification & Masking" id="tab-masking" />
-          <Tab label="Retention & Legal Hold (OD-008)" id="tab-retention" />
+          <Tab label="Retention (OD-008)" id="tab-retention" />
           <Tab label="Data-Principal Rights (DSR)" id="tab-dsr" />
         </Tabs>
 
@@ -836,7 +811,7 @@ export function PrivacyDashboard(): React.ReactElement {
                     label="Mobile Number (E.164)"
                     value={sandboxPhone}
                     onChange={(e) => setSandboxPhone(e.target.value)}
-                    helperText={`Masked output: ${maskPhone(sandboxPhone)}`}
+                    helperText={`Masked output: ${displayMobile(sandboxPhone) ?? ''}`}
                   />
                 </Grid>
 
@@ -847,7 +822,7 @@ export function PrivacyDashboard(): React.ReactElement {
                     label="Email Address"
                     value={sandboxEmail}
                     onChange={(e) => setSandboxEmail(e.target.value)}
-                    helperText={`Masked output: ${maskEmail(sandboxEmail)}`}
+                    helperText={`Masked output: ${displayEmail(sandboxEmail) ?? ''}`}
                   />
                 </Grid>
 
@@ -858,7 +833,7 @@ export function PrivacyDashboard(): React.ReactElement {
                     label="Permanent Account Number (PAN)"
                     value={sandboxPan}
                     onChange={(e) => setSandboxPan(e.target.value)}
-                    helperText={`Masked output: ${maskPan(sandboxPan)}`}
+                    helperText={`Masked output: ${displayPan(sandboxPan) ?? ''}`}
                   />
                 </Grid>
 
@@ -882,12 +857,12 @@ export function PrivacyDashboard(): React.ReactElement {
           </Box>
         )}
 
-        {/* TAB 3: Retention & Legal Hold Status */}
+        {/* TAB 3: Retention */}
         {activeTab === 3 && (
           <Box sx={{ p: 3 }}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-                Retention Schedules &amp; Legal Hold Governance
+                Retention Schedules
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Compliance with statutory record-keeping periods under RBI, PMLA, and Limitation Act
@@ -899,7 +874,7 @@ export function PrivacyDashboard(): React.ReactElement {
               <Typography variant="subtitle2" fontWeight={700}>
                 Retention notice: hard deletion is not yet enabled
               </Typography>
-              Retention schedules below are proposed baselines. Hard deletion and legal-hold records stay disabled until a formal legal opinion on retention is received.
+              Retention schedules below are proposed baselines. Hard deletion stays disabled until a formal legal opinion on retention is received.
             </Alert>
 
             <Grid container spacing={3}>

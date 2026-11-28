@@ -176,7 +176,7 @@ describe('TEST-PROV provisioning a platform operator', () => {
     expect(requiresMfa(principal)).toBe(true); // the API refuses every call (except GET /v1/me) until TOTP is enrolled
     // No tenant permission comes with it.
     expect(
-      principal.grants.some((g) => g.code === 'config.manage' || g.code === 'data_correction.approve'),
+      principal.grants.some((g) => g.code === 'config.manage'),
     ).toBe(false);
   });
 

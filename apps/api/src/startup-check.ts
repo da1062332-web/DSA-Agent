@@ -13,7 +13,6 @@ const SENTINELS: [string, string][] = [
   ['0077', `to_regclass('app.inbound_webhook')`],
   ['0078', `to_regclass('app.retention_policy')`],
   ['0080', `to_regclass('app.reference_list')`],
-  ['0081', `to_regclass('app.access_review')`],
   ['0082', `to_regclass('app.setting')`],
   ['0083', `to_regclass('app.tenant_offboarding')`],
   ['0084', `to_regclass('app.referral_consent_otp')`],

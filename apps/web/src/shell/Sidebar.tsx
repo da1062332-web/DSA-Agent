@@ -241,10 +241,8 @@ export function SidebarContent({
     location.pathname.startsWith('/permissions') ||
     location.pathname.startsWith('/config') ||
     location.pathname.startsWith('/integrations') ||
-    location.pathname.startsWith('/api-management') ||
     location.pathname.startsWith('/audit') ||
     location.pathname.startsWith('/privacy') ||
-    location.pathname.startsWith('/security') ||
     location.pathname.startsWith('/account/security') ||
     location.pathname.startsWith('/platform-admin');
 

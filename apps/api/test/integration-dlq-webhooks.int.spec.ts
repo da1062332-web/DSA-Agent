@@ -20,7 +20,7 @@ beforeAll(async () => {
   );
   await q(
     `insert into app.job_queue (id, tenant_id, job_type, status, attempts, max_attempts, last_error)
-     values ('job_dlq_1', $1, 'DOCUMENT_ARCHIVE', 'FAILED', 3, 3, 'Error: disk')`,
+     values ('job_dlq_1', $1, 'EXPORT_BUILD', 'FAILED', 3, 3, 'Error: disk')`,
     [a.tenantId],
   );
   await q(

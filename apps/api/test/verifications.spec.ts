@@ -109,6 +109,52 @@ describe('Module 22 — Verification (MOD-VER)', () => {
     });
   });
 
+  describe('P1-06 only the server creates PROVIDER_AUTOMATED records', () => {
+    // The mocked dependencies stand in for ApiDeps; a typed cast keeps `any` out of the new tests.
+    const asDeps = (d: unknown) => d as ConstructorParameters<typeof VerificationService>[0];
+    const automated: CreateVerificationInput = {
+      subjectType: 'CUSTOMER',
+      subjectId: 'cust_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      checkType: 'PAN',
+      method: 'PROVIDER_AUTOMATED',
+      purpose: 'KYC',
+      consentRecordId: 'cnst_01ARZ3NDEKTSV4RRFFQ69G5FAV',
+      result: 'VERIFIED',
+      minimalResult: { statusDescription: 'Forged provider answer', maskedIdentifier: 'ABCDE****F' },
+      evidenceRef: 'karza:forged-0001',
+    };
+
+    it('P1-06 createVerification refuses method PROVIDER_AUTOMATED with 422 before it touches the database', async () => {
+      const deps = makeDeps();
+      const service = new VerificationService(asDeps(deps));
+
+      await expect(service.createVerification(mockCtx, automated, 'idem_key_auto_01')).rejects.toMatchObject({
+        code: 'VALIDATION_ERROR',
+        httpStatus: 422,
+        details: [{ field: 'method', issue: 'PROVIDER_AUTOMATED_IS_SERVER_ONLY' }],
+      });
+      expect(deps.txRunner.withTenantTx).not.toHaveBeenCalled();
+    });
+
+    it('P1-06 the permission is still checked first: a caller without verification.perform gets 403, not the 422', async () => {
+      const deps = makeDeps();
+      const service = new VerificationService(asDeps(deps));
+      const noPerform: RequestContext = {
+        ...mockCtx,
+        principal: {
+          ...mockCtx.principal,
+          grants: [{ code: 'verification.read', scope: 'TENANT', branchIds: [] }],
+        },
+      };
+
+      await expect(
+        service.createVerification(noPerform, automated, 'idem_key_auto_02'),
+      ).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      });
+    });
+  });
+
   describe('Authorization & RBAC Enforcement', () => {
     it('TEST-VER-AUTH-001: rejects createVerification if principal lacks verification.perform', async () => {
       const deps = makeDeps();

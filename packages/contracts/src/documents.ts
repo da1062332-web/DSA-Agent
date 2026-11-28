@@ -146,16 +146,6 @@ export const DocumentLinkRequestSchema = z.object({ purpose: z.string().max(200)
 export const DocumentLinkResponseSchema = z.object({ url: z.string(), expiresAt: z.string() });
 export type DocumentLinkResponse = z.infer<typeof DocumentLinkResponseSchema>;
 
-// API-DOC-009
-export const DocumentArchiveResponseSchema = z.object({
-  archiveId: z.string(),
-  status: z.enum(['QUEUED', 'READY', 'FAILED']),
-  documentCount: z.number().int(),
-  url: z.string().nullable(),
-  expiresAt: z.string().nullable(),
-});
-export type DocumentArchiveResponse = z.infer<typeof DocumentArchiveResponseSchema>;
-
 // Checklist waiver (API-APP-009) lives with the application; listed here because it moves documents' checklist rows.
 export const WaiveChecklistItemSchema = z.object({
   checklistItemId: z.string().min(1),
@@ -163,25 +153,3 @@ export const WaiveChecklistItemSchema = z.object({
   reason: z.string().min(5).max(500),
 });
 export type WaiveChecklistItemInput = z.infer<typeof WaiveChecklistItemSchema>;
-
-// API-PRV-004
-export const CreateLegalHoldSchema = z.object({
-  subjectType: z.enum(['CUSTOMER', 'LOAN_APPLICATION', 'LEAD', 'DOCUMENT']),
-  subjectId: z.string().min(1),
-  reason: z.string().min(5).max(1000),
-  reference: z.string().max(200).optional(),
-});
-export type CreateLegalHoldInput = z.infer<typeof CreateLegalHoldSchema>;
-
-export const LegalHoldSchema = z.object({
-  id: z.string(),
-  subjectType: z.string(),
-  subjectId: z.string(),
-  reason: z.string(),
-  reference: z.string().nullable(),
-  placedBy: z.string(),
-  placedAt: z.string(),
-  releasedAt: z.string().nullable(),
-  version: z.number().int(),
-});
-export type LegalHold = z.infer<typeof LegalHoldSchema>;

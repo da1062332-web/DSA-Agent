@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch } from '../api/client';
-import { useMe, hasPermission } from '../api/useMe';
+import { useMe, hasPermission, moduleEnabled } from '../api/useMe';
 
 export interface BaseSelectorProps {
   value: string | null | undefined;
@@ -250,7 +250,8 @@ export function ConnectorSelect({
   'data-testid': testId,
 }: BaseSelectorProps) {
   const me = useMe();
-  const canRead = hasPermission(me.data, 'connector.read');
+  const connectorsOn = moduleEnabled(me.data, 'MOD-CON'); // connectors switched off for the tenant: no picker
+  const canRead = connectorsOn && hasPermission(me.data, 'connector.read');
   const { data: connectors = [], isLoading } = useLookupItems<ConnectorItem>(
     '/v1/connectors',
     undefined,
@@ -264,6 +265,8 @@ export function ConnectorSelect({
   const selectedOption =
     connectors.find((c) => c.id === value) ||
     (value ? ({ id: value, tradeName: value } as ConnectorItem) : null);
+
+  if (!connectorsOn) return null;
 
   if (!canRead) {
     return (

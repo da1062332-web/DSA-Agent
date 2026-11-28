@@ -1,8 +1,13 @@
 // apps/api/src/modules/invoices/service.ts — Module 33: Invoices & Statements Service
+import { redactSecrets } from '../../http/redact';
 import {
   AppError,
+  computeAmountWithBps,
+  formatPaiseToMoney,
+  parseMoneyToPaise,
   withLegacy,
   type AccountingExportRow,
+  type CommissionPort,
   type AuditPort,
   type Authz,
   type ConnectorStatement,
@@ -26,8 +31,21 @@ export interface InvoiceServiceDeps {
   authz: Authz;
   audit?: AuditPort;
   ids?: IdGenerator;
+  /** P2-01: reads earned commission and the plan's tax terms without this module entering finance. */
+  commissionPort?: CommissionPort;
 }
 
+
+/**
+ * The Indian financial year a month falls in, as CGST Rule 46(b) numbers them: it begins on 1 April, so '2026-11' is
+ * '26-27' and '2026-03' is '25-26'. The label is part of the invoice number, which must be unique within its year.
+ */
+export function financialYearLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  const startYear = m >= 4 ? y : y - 1;
+  const twoDigit = (n: number) => String(n % 100).padStart(2, '0');
+  return `${twoDigit(startYear)}-${twoDigit(startYear + 1)}`;
+}
 
 /** Inclusive first and last day of a YYYY-MM month, as ISO dates. */
 export function monthBounds(month: string): { from: string; to: string } {
@@ -57,9 +75,11 @@ const csvCell = (value: string): string =>
 export function accountingExportToCsv(rows: AccountingExportRow[]): string {
   const lines = [ACCOUNTING_EXPORT_HEADER.join(',')];
   for (const r of rows) {
+    // Every cell goes through the shared redactor: a party name or reference typed with a PAN or Aadhaar number is masked in the
+    // export, including rows stored before the write-side check (TEST-SECRETS-04).
     lines.push(
       [r.recordType, r.number, r.date, r.party, r.taxableValue, r.gst, r.tds, r.total, r.paymentStatus]
-        .map(csvCell)
+        .map((cell) => csvCell(redactSecrets(String(cell))))
         .join(','),
     );
   }
@@ -87,6 +107,114 @@ export class InvoiceService {
   /**
    * API-INV-001: POST /v1/invoices — Record invoice
    */
+  /**
+   * The monthly commission invoice to one lender (P2-01).
+   *
+   * Three things here are deliberate and easy to get wrong:
+   *
+   * - **GST may not belong on the invoice.** Under Notification 13/2017-Central Tax (Rate) Sl. No. 11, an individual or
+   *   proprietorship DSA billing a bank or NBFC is under reverse charge: the lender accounts for the tax and this
+   *   invoice shows none. A body corporate, partnership or LLP charges it. The plan carries which applies.
+   * - **TDS is never subtracted.** It is the lender's deduction under section 393(1) of the Income-tax Act 2025
+   *   (formerly 194H). It is recorded so the DSA knows what to expect, and it leaves the invoice value untouched.
+   * - **The number is allocated inside this transaction**, so an invoice that fails to write never burns a number and
+   *   the series stays consecutive, as Rule 46(b) requires.
+   */
+  async buildLenderCommissionInvoice(
+    tx: Tx,
+    ctx: RequestContext,
+    input: { lenderId: string; month: string },
+  ): Promise<InvoiceRecord> {
+    this.deps.authz.requirePermission(ctx, 'invoice.manage');
+
+    const { commissionPort } = this.deps;
+    if (!commissionPort) {
+      throw AppError.of('DEPENDENCY_UNAVAILABLE', 'The commission module is not available.');
+    }
+
+    const tenantId = ctx.principal.tenantId;
+    const { lenderId, month } = input;
+
+    const existing = await this.deps.repository.findInvoiceByPeriod(tx, tenantId, lenderId, month);
+    if (existing) {
+      throw AppError.of(
+        'INVALID_STATE',
+        `Lender ${lenderId} is already invoiced for ${month} (${existing.number}). Void that invoice to reissue the month.`,
+      );
+    }
+
+    const lines = await commissionPort.listEarnedForMonth(tx, ctx, { lenderId, month });
+    if (lines.length === 0) {
+      throw AppError.of('INVALID_STATE', `No earned commission for lender ${lenderId} in ${month}.`);
+    }
+
+    const terms = await commissionPort.getInvoiceTerms(tx, ctx, lenderId);
+    if (!terms) {
+      throw AppError.of('INVALID_STATE', `Lender ${lenderId} has no active commission plan, so its tax treatment is unknown.`);
+    }
+
+    const currency = lines[0]!.currency;
+    if (lines.some((line) => line.currency !== currency)) {
+      throw AppError.of('INVALID_STATE', `Lender ${lenderId} has commission in more than one currency for ${month}.`);
+    }
+
+    // Summed in whole paise with the shared helpers, so this total equals what the commission engine calculated.
+    const taxablePaise = lines.reduce((sum, line) => sum + parseMoneyToPaise(line.grossAmount), 0n);
+    const gstPaise =
+      terms.taxTreatment === 'FORWARD_CHARGE'
+        ? computeAmountWithBps(taxablePaise, terms.gstRateBps, terms.roundingMode)
+        : 0n;
+    const tdsPaise = computeAmountWithBps(taxablePaise, terms.tdsRateBps, terms.roundingMode);
+
+    const number = await this.deps.repository.allocateInvoiceNumber(
+      tx,
+      tenantId,
+      'CI',
+      financialYearLabel(month),
+      ctx.principal.id,
+    );
+    const id = this.deps.ids ? this.deps.ids.next('inv' as any) : this.generateId('inv');
+
+    const invoice = await this.deps.repository.createInvoice(tx, tenantId, {
+      id,
+      direction: 'TO_LENDER',
+      number,
+      // Dated the last day of the month it bills.
+      date: monthBounds(month).to,
+      amount: Number(formatPaiseToMoney(taxablePaise)),
+      currency,
+      partyId: lenderId,
+      periodMonth: month,
+      calculationIds: lines.map((line) => line.calculationId),
+      taxFields: {
+        gstRate: terms.gstRateBps / 100,
+        gstAmount: Number(formatPaiseToMoney(gstPaise)),
+        tdsRate: terms.tdsRateBps / 100,
+        tdsAmount: Number(formatPaiseToMoney(tdsPaise)),
+        taxTreatment: terms.taxTreatment,
+      },
+      createdBy: ctx.principal.id,
+    });
+
+    if (this.deps.audit) {
+      await this.deps.audit.record(tx, ctx, {
+        action: 'invoice.commission_generated',
+        entityType: 'invoice',
+        entityId: invoice.id,
+        after: {
+          number: invoice.number,
+          partyId: lenderId,
+          periodMonth: month,
+          lineCount: lines.length,
+          taxTreatment: terms.taxTreatment,
+        },
+        permissionUsed: 'invoice.manage',
+      });
+    }
+
+    return invoice;
+  }
+
   async recordInvoice(tx: Tx, ctx: RequestContext, input: CreateInvoiceInput): Promise<InvoiceRecord> {
     this.deps.authz.requirePermission(ctx, 'invoice.manage');
 

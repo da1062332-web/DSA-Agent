@@ -1,12 +1,6 @@
-// apps/web/src/features/workforce/api.ts — Module 26: Workforce API client
+// apps/web/src/features/workforce/api.ts — Module 26: Workforce API client (attendance). Capacity, availability and delegations were removed with task P0-02.
 import { ApiError as SharedApiError, apiRequest, type ApiRequest } from '../../api/client';
-import type {
-  AgentWorkforceSummary,
-  AttendanceRecord,
-  AvailabilityStatus,
-  CreateDelegationInput,
-  DelegationRecord,
-} from './types';
+import type { AttendanceRecord } from './types';
 
 
 export class ApiError extends Error {
@@ -40,71 +34,6 @@ async function request<T>(
     }
     throw err;
   }
-}
-
-// 1. SUB-WRK.01: Capacity and Availability
-export async function updateMyAvailability(
-  availability: AvailabilityStatus,
-  ifMatch?: string,
-): Promise<{ user: any; etag?: string }> {
-  const res = await request<any>('/v1/me/availability', {
-    method: 'PATCH',
-    body: JSON.stringify({ availability }),
-    ifMatch,
-  });
-  return { user: res.data, etag: res.etag };
-}
-
-export async function getAgents(branchId?: string): Promise<AgentWorkforceSummary[]> {
-  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : '';
-  const res = await request<{ agents: AgentWorkforceSummary[] }>(`/v1/workforce/agents${query}`);
-  return res.data.agents;
-}
-
-export async function updateAgentCapacity(
-  agentId: string,
-  capacity: number,
-): Promise<{ user: any; etag?: string }> {
-  const res = await request<any>(`/v1/workforce/agents/${agentId}/capacity`, {
-    method: 'PATCH',
-    body: JSON.stringify({ capacity }),
-  });
-  return { user: res.data, etag: res.etag };
-}
-
-// 2. SUB-WRK.02: Leave Coverage & Delegations
-export async function getDelegations(params?: {
-  delegatorId?: string;
-  delegateId?: string;
-  status?: string;
-}): Promise<DelegationRecord[]> {
-  const q = new URLSearchParams();
-  if (params?.delegatorId) q.set('delegatorId', params.delegatorId);
-  if (params?.delegateId) q.set('delegateId', params.delegateId);
-  if (params?.status) q.set('status', params.status);
-  const qs = q.toString() ? `?${q.toString()}` : '';
-
-  const res = await request<{ delegations: DelegationRecord[] }>(`/v1/delegations${qs}`);
-  return res.data.delegations;
-}
-
-export async function createDelegation(
-  input: CreateDelegationInput,
-  idempotencyKey?: string,
-): Promise<DelegationRecord> {
-  const res = await request<DelegationRecord>('/v1/delegations', {
-    method: 'POST',
-    body: JSON.stringify(input),
-    idempotencyKey,
-  });
-  return res.data;
-}
-
-export async function endDelegation(id: string): Promise<DelegationRecord> {
-  const res = await request<DelegationRecord>(`/v1/delegations/${id}/end`, {
-    method: 'POST',
-  });
-  return res.data;
 }
 
 // 3. SUB-WRK.03: Attendance Tracking

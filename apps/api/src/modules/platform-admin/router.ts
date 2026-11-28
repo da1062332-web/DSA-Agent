@@ -4,15 +4,13 @@
 // Two realms (DSA Notion MODULE 1 and MODULE 40):
 //   - Platform routes (console, flags, master data, jobs, health, support-access requests, releases) need the permission AND a
 //     signed-in user of the platform tenant. A tenant administrator holding the same permission code is refused.
-//   - Tenant routes (approving support access, data corrections) need the permission AND a user of a customer tenant. A platform
+//   - Tenant routes (approving support access) need the permission AND a user of a customer tenant. A platform
 //     operator cannot approve their own request.
 // Service identities get no shortcut in either realm. Every platform action and every cross-tenant read is written to the audit trail.
 import { registerTenantLifecycleRoutes } from './tenant-lifecycle';
 import {
   AppError,
-  ApproveDataCorrectionRequestSchema,
   ApproveSupportAccessRequestSchema,
-  CreateDataCorrectionRequestSchema,
   CreateSupportAccessRequestSchema,
   ListPlatformTenantsQuerySchema,
   RevokeSupportAccessRequestSchema,
@@ -33,7 +31,7 @@ import { PlatformAdminService } from './platform-admin-service';
 
 export { PlatformAdminService };
 
-/** Tenant-realm routes (support-access approvals, data corrections), mounted under /v1 with the other modules. */
+/** Tenant-realm routes (support-access approvals), mounted under /v1 with the other modules. */
 export function createRouter(deps: ApiDeps, serviceOverride?: PlatformAdminService): Router {
   return buildRouter(deps, 'tenant', serviceOverride);
 }
@@ -111,23 +109,6 @@ function buildRouter(
     requirePermission(ctx, code);
     if (ctx.principal.kind !== 'USER' || isPlatformRealm(ctx.principal)) {
       await refuse(ctx, code, 'tenant', 'This action belongs to a customer tenant.');
-    }
-  };
-
-  /** Any one of the permissions, held by a user of a customer tenant. */
-  const requireTenantAny = async (ctx: RequestContext, codes: PermissionCode[]): Promise<void> => {
-    if (!codes.some((c) => ctx.principal.grants.some((g) => g.code === c))) {
-      await refuse(ctx, codes[0] ?? 'permission', 'tenant', `Permission denied: one of [${codes.join(', ')}] required.`);
-    }
-    if (ctx.principal.kind !== 'USER' || isPlatformRealm(ctx.principal)) {
-      await refuse(ctx, codes[0] ?? 'permission', 'tenant', 'This action belongs to a customer tenant.');
-    }
-  };
-
-  /** Only the data-correction executor, a service identity, marks a correction executed (Module 40, SUB-ADM.07). */
-  const requireExecutor = (ctx: RequestContext): void => {
-    if (ctx.principal.kind !== 'SERVICE' || ctx.principal.id !== 'SYSTEM:data-correction-executor') {
-      throw AppError.of('FORBIDDEN', 'Only the data correction executor can mark a correction as executed.');
     }
   };
 
@@ -437,44 +418,6 @@ function buildRouter(
       await requireTenant(ctx, 'config.manage');
       RevokeSupportAccessRequestSchema.parse(req.body ?? {});
       res.json(await service.revokeSupportAccessRequest(ctx, getParam(req, 'id')));
-    }),
-  );
-
-  // ==========================================
-  // SUB-ADM.07: Data Correction (API-ADM-008 / API-ADM-009) — tenant realm
-  // ==========================================
-  on('tenant').get(
-    '/data-corrections',
-    handle(async (ctx, _req, res) => {
-      await requireTenantAny(ctx, ['data_correction.request', 'data_correction.approve', 'config.manage']);
-      res.json(await service.listDataCorrections(ctx));
-    }),
-  );
-
-  on('tenant').post(
-    '/data-corrections',
-    handle(async (ctx, req, res) => {
-      await requireTenant(ctx, 'data_correction.request');
-      const input = CreateDataCorrectionRequestSchema.parse(req.body);
-      res.status(201).json(await service.createDataCorrectionRequest(ctx, input));
-    }),
-  );
-
-  on('tenant').post(
-    '/data-corrections/:id/approval',
-    handle(async (ctx, req, res) => {
-      await requireTenant(ctx, 'data_correction.approve');
-      const input = ApproveDataCorrectionRequestSchema.parse(req.body);
-      res.json(await service.approveDataCorrectionRequest(ctx, getParam(req, 'id'), input));
-    }),
-  );
-
-  // Executed by the correction executor (a service identity), never by a person. The executor carries the tenant in its token.
-  on('tenant').post(
-    '/data-corrections/:id/execute',
-    handle(async (ctx, req, res) => {
-      requireExecutor(ctx);
-      res.json(await service.executeDataCorrection(ctx, getParam(req, 'id')));
     }),
   );
 

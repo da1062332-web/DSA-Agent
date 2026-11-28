@@ -31,13 +31,6 @@ describe('sidebar visibility by permission', () => {
     expect(labels((c) => created.has(c))).not.toContain('Lender cases');
   });
 
-  it('shows security events and incidents only to someone holding security.incident, and never to a platform operator', () => {
-    expect(labels((c) => c === 'security.incident')).toContain('Security events and incidents');
-    expect(labels((c) => c === 'lead.read')).not.toContain('Security events and incidents');
-    const platform = visibleGroups(false, () => true, true).flatMap((g) => g.items.map((i) => i.label));
-    expect(platform).not.toContain('Security events and incidents');
-  });
-
   it('offers Documents as a real screen to anyone who holds a document permission, not to everyone who can read applications', () => {
     for (const code of ['document.view', 'document.download', 'document.review', 'document.waive']) {
       const item = visibleGroups(false, (c) => c === code)
@@ -115,8 +108,6 @@ describe('platform realm in the sidebar', () => {
     const tenantAdmin = new Set([
       'config.manage',
       'user.manage',
-      'data_correction.request',
-      'data_correction.approve',
     ]);
     const shown = labels((c) => tenantAdmin.has(c), true);
     expect(shown).toContain('Approvals');

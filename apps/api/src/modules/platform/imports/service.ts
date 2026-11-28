@@ -14,6 +14,7 @@ import {
 } from '@dsa/contracts';
 import { sql } from 'kysely';
 import type { ApiDeps } from '../../types';
+import { redactSecrets } from '../../../http/redact';
 import { globalStorage, type ObjectStoragePort } from '../../../storage/object-storage';
 import { parseCsvBuffer, serializeCsv } from './csv-parser';
 import { ImportRepository, toImportBatchDto } from './repository';
@@ -158,7 +159,11 @@ export class ImportService {
       file_size_bytes: stored.fileSizeBytes,
       checksum_sha256: checksum,
       status: 'PARSED',
-      preview_data: parsed.previewRows,
+      // The preview is shown back to the uploader and stored with the batch, so identity numbers in it are masked (TEST-SECRETS-04).
+      // The commit reads the stored file, not this preview.
+      preview_data: parsed.previewRows.map((row) =>
+        Object.fromEntries(Object.entries(row).map(([k, v]) => [k, redactSecrets(v)])),
+      ),
       total_rows: parsed.totalRows,
     });
 
@@ -389,7 +394,8 @@ export class ImportService {
         Field: e.field ?? 'General',
         Issue: e.issue,
         Message: e.message,
-        RawValue: String(e.rawValue ?? ''),
+        // The report is an export: a PAN or Aadhaar number typed into the wrong column is masked here too (TEST-SECRETS-04).
+        RawValue: redactSecrets(String(e.rawValue ?? '')),
       }));
       const reportBuffer = serializeCsv(['RowNumber', 'Field', 'Issue', 'Message', 'RawValue'], errorRows);
       const reportStored = await this.storage.save(
@@ -410,7 +416,10 @@ export class ImportService {
       invalid_rows: errors.length,
       imported_rows: importedCount,
       report_file_key: reportKey,
-      error_summary: errors.slice(0, 50), // Store top 50 errors in jsonb
+      // Top 50 errors in jsonb, returned with the batch. The raw value is masked here too (TEST-SECRETS-04).
+      error_summary: errors
+        .slice(0, 50)
+        .map((e) => ({ ...e, rawValue: e.rawValue === undefined ? undefined : redactSecrets(String(e.rawValue)) })),
       committed_at: new Date(),
     });
 

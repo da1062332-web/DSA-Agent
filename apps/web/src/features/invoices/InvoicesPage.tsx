@@ -34,11 +34,13 @@ import {
 import {
   createInvoice,
   downloadAccountingExport,
+  generateLenderCommissionInvoice,
   getConnectorStatements,
   getInvoices,
   updateInvoiceStatus,
 } from './api';
 import { ConnectorSelect } from '../connectors/ConnectorSelect';
+import { LenderSelect } from '../../shell/selectors';
 import { ConnectorName, UserName } from '../../shell/display';
 import type { CreateInvoiceInput, InvoiceDirection, InvoiceRecord, InvoiceStatus } from './types';
 import { NotSet } from '../../ui/NotSet';
@@ -54,6 +56,12 @@ export function InvoicesPage() {
   const canExport = hasPermission(me, 'export.run');
   const [exportMonth, setExportMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [exporting, setExporting] = useState(false);
+
+  // P2-01: the month's commission invoice to one lender. The API sums the earned calculations and allocates the
+  // invoice number itself, so this dialog asks only which lender and which month.
+  const [genDialogOpen, setGenDialogOpen] = useState(false);
+  const [genLenderId, setGenLenderId] = useState<string | null>(null);
+  const [genMonth, setGenMonth] = useState(() => new Date().toISOString().slice(0, 7));
 
   // Navigation tab (0: Invoice Register, 1: Connector Statements)
   const [tabIndex, setTabIndex] = useState(0);
@@ -155,6 +163,20 @@ export function InvoicesPage() {
   }, [invoices]);
 
   // Mutations
+  const generateMutation = useMutation({
+    mutationFn: ({ lenderId, month }: { lenderId: string; month: string }) =>
+      generateLenderCommissionInvoice({ lenderId, month }),
+    onSuccess: ({ invoice }) => {
+      // The number is the point of the message: it is the serial the lender and the GST return will both quote.
+      toast.success(`Invoice ${invoice.number} raised for ${invoice.periodMonth ?? genMonth}.`);
+      setGenDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Could not generate the commission invoice.');
+    },
+  });
+
   const recordMutation = useMutation({
     mutationFn: (input: CreateInvoiceInput) => createInvoice(input),
     onSuccess: () => {
@@ -498,6 +520,16 @@ export function InvoicesPage() {
             ) : null}
             {canManage ? (
               <Button
+                variant="outlined"
+                data-testid="invoices.generate-lender-invoice"
+                onClick={() => setGenDialogOpen(true)}
+                sx={{ px: 2, py: 1, borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+              >
+                Generate lender invoice
+              </Button>
+            ) : null}
+            {canManage ? (
+              <Button
                 variant="contained"
                 color="primary"
                 data-testid="invoices.record-invoice"
@@ -808,6 +840,58 @@ export function InvoicesPage() {
       {/* ======================================================== */}
       {/* DIALOG: RECORD INVOICE */}
       {/* ======================================================== */}
+      {/* P2-01: Generate the month's commission invoice to one lender */}
+      <Dialog open={genDialogOpen} onClose={() => setGenDialogOpen(false)} maxWidth="sm" fullWidth>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!genLenderId) return;
+            generateMutation.mutate({ lenderId: genLenderId, month: genMonth });
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: 700 }}>Generate lender commission invoice</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Alert severity="info">
+                Every commission earned from this lender in the month is billed on one invoice. The amount, the tax
+                and the invoice number are worked out by the system, so there is nothing to type here but the
+                lender and the month — and a month already billed is refused rather than billed twice.
+              </Alert>
+              <LenderSelect
+                required
+                label="Lender"
+                value={genLenderId}
+                onChange={setGenLenderId}
+                size="medium"
+                data-testid="invoices.generate-lender"
+              />
+              <TextField
+                required
+                fullWidth
+                type="month"
+                label="Month"
+                value={genMonth}
+                onChange={(e) => setGenMonth(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ 'data-testid': 'invoices.generate-month' }}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setGenDialogOpen(false)}>Cancel</Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={!genLenderId || generateMutation.isPending}
+              data-testid="invoices.generate-submit"
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              {generateMutation.isPending ? 'Generating…' : 'Generate invoice'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
       <Dialog open={recordDialogOpen} onClose={() => setRecordDialogOpen(false)} maxWidth="sm" fullWidth>
         <form onSubmit={handleRecordSubmit}>
           <DialogTitle sx={{ fontWeight: 700 }}>Record New Invoice</DialogTitle>

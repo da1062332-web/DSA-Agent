@@ -4,7 +4,7 @@
 //   API-CUST-008 POST /v1/customers/{id}/merge           lead.merge; Idempotency-Key. {id} is merged into intoCustomerId: it
 //                becomes MERGED, its contact points are copied to the survivor, and leads and live applications are
 //                re-pointed (merge_customer_links). Consents of the merged customer keep counting for the survivor.
-import { AppError, maskEmail, maskMobile, type RequestContext, type Tx } from '@dsa/contracts';
+import { AppError, freeTextNoS3, maskEmail, maskMobile, type RequestContext, type Tx } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import type { Router } from 'express';
 import { sql } from 'kysely';
@@ -22,8 +22,6 @@ import {
 } from './normalizer';
 import type { CustomerRepository, CustomerRow } from './repository';
 
-const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
-
 export const ContactPointCreate = z
   .object({
     kind: z.enum(['MOBILE', 'EMAIL']),
@@ -40,7 +38,7 @@ export const CustomerMerge = z
       .trim()
       .min(3)
       .max(200)
-      .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers'),
+      .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers'),
   })
   .strict();
 
