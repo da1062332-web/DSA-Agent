@@ -28,7 +28,7 @@ import { EligibilityCard } from '../EligibilityCard';
 import { LenderMatchesCard } from '../LenderMatchesCard';
 import { countedText, incomeTotals, ltvPercent } from '../eligibility-working';
 import { formatInr, humanize } from '../loan-file';
-import { Section } from './OverviewTab';
+import { Section } from './parts';
 
 const ROLE = { PRIMARY: 'Borrower', CO_APPLICANT: 'Co-applicant', GUARANTOR: 'Guarantor' } as const;
 

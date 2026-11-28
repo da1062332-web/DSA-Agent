@@ -1,6 +1,7 @@
 // The road of a loan file, Draft to Disbursed, with the current stage marked (owner: Bhushan, 2026-11-28 loan-file redesign).
-// A file that left the road (rejected, withdrawn, cancelled) shows where it stopped and why.
-import { Box, Typography } from '@mui/material';
+// A file that left the road (rejected, withdrawn, cancelled) shows where it stopped and why. Each stage is a button: it opens that
+// stage's work below, and the stage being viewed is underlined.
+import { Box, ButtonBase, Typography } from '@mui/material';
 import { JOURNEY, type JourneyState } from '../loan-file';
 
 const OUTCOME_LABEL = {
@@ -10,7 +11,16 @@ const OUTCOME_LABEL = {
   CLOSED: 'Closed',
 } as const;
 
-export function JourneyStepper({ state }: { state: JourneyState }) {
+export function JourneyStepper({
+  state,
+  selected,
+  onSelect,
+}: {
+  state: JourneyState;
+  /** The stage being viewed, when the stepper drives the page. */
+  selected?: number;
+  onSelect?: (index: number) => void;
+}) {
   const stopped = state.outcome !== null && state.outcome !== 'CLOSED';
   return (
     <Box
@@ -23,10 +33,39 @@ export function JourneyStepper({ state }: { state: JourneyState }) {
         const stopHere = current && stopped;
         const tone = stopHere ? 'error.main' : done ? 'success.main' : current ? 'primary.main' : 'grey.300';
         return (
-          <Box
+          <ButtonBase
             key={step.status}
-            sx={{ position: 'relative', textAlign: 'center', px: 0.5 }}
-            data-testid={`application.journey.${step.status}`}
+            component="div"
+            disabled={!onSelect}
+            onClick={() => onSelect?.(i)}
+            aria-current={selected === i ? 'step' : undefined}
+            aria-label={`${step.label}: ${stopHere ? 'stopped here' : done ? 'done' : current ? 'current stage' : 'upcoming'}`}
+            sx={{
+              position: 'relative',
+              display: 'block',
+              textAlign: 'center',
+              px: 0.5,
+              pt: 0.5,
+              pb: 1,
+              borderRadius: '8px',
+              cursor: onSelect ? 'pointer' : 'default',
+              bgcolor: selected === i ? 'rgba(33, 89, 136, 0.06)' : 'transparent',
+              '&:hover': onSelect ? { bgcolor: 'rgba(33, 89, 136, 0.08)' } : undefined,
+              '&::after':
+                selected === i
+                  ? {
+                      content: '""',
+                      position: 'absolute',
+                      left: '20%',
+                      right: '20%',
+                      bottom: 0,
+                      height: 3,
+                      borderRadius: 2,
+                      bgcolor: 'primary.main',
+                    }
+                  : undefined,
+            }}
+            data-testid={`application.stage-${step.key}`}
             data-state={stopHere ? 'stopped' : done ? 'done' : current ? 'current' : 'todo'}
           >
             {/* the line to the next stage */}
@@ -34,7 +73,7 @@ export function JourneyStepper({ state }: { state: JourneyState }) {
               <Box
                 sx={{
                   position: 'absolute',
-                  top: 13,
+                  top: 17,
                   left: '50%',
                   width: '100%',
                   height: 2,
@@ -92,7 +131,7 @@ export function JourneyStepper({ state }: { state: JourneyState }) {
                   ? 'Partly paid out'
                   : step.hint}
             </Typography>
-          </Box>
+          </ButtonBase>
         );
       })}
     </Box>

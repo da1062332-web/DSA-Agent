@@ -9,7 +9,7 @@ import { useLookup, useResource } from '../../admin/api';
 import { PartiesCard } from '../ApplicationFileCards';
 import type { Application } from '../ApplicationsPage';
 import { formatInr, humanize } from '../loan-file';
-import { Row } from './OverviewTab';
+import { Row } from './parts';
 
 interface Party {
   id: string;

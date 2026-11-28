@@ -3,16 +3,99 @@
 import type { Money } from '@dsa/contracts';
 import type { ApplicationStatus } from './rules';
 
-/** The road a loan file travels, in order. The labels are what a loan officer calls each stage. */
-export const JOURNEY: readonly { status: ApplicationStatus; label: string; hint: string }[] = [
-  { status: 'DRAFT', label: 'Draft', hint: 'Applicant and loan request captured' },
-  { status: 'DOCUMENTS_PENDING', label: 'Documents', hint: 'Collecting the borrower documents' },
-  { status: 'UNDER_REVIEW', label: 'Credit review', hint: 'Documents and eligibility reviewed' },
-  { status: 'READY_FOR_SUBMISSION', label: 'Ready', hint: 'File complete, ready for a lender' },
-  { status: 'SUBMITTED', label: 'With lender', hint: 'Logged in with one or more lenders' },
-  { status: 'SANCTIONED', label: 'Sanctioned', hint: 'A lender sanctioned the loan' },
-  { status: 'DISBURSED', label: 'Disbursed', hint: 'Loan amount paid out' },
+/** The stages of a loan file; the key is the ?stage= value, so a link can open the file on a stage. */
+export type StageKey = 'draft' | 'documents' | 'review' | 'ready' | 'lender' | 'sanctioned' | 'disbursed';
+
+/**
+ * The road a loan file travels, in order. The labels are what a loan officer calls each stage; `purpose` is what the stage is for,
+ * shown at the top of the stage on the page.
+ */
+export const JOURNEY: readonly {
+  key: StageKey;
+  status: ApplicationStatus;
+  label: string;
+  hint: string;
+  purpose: string;
+  /** Who or what moves the file to the next stage. */
+  movesOn: string;
+}[] = [
+  {
+    key: 'draft',
+    status: 'DRAFT',
+    label: 'Draft',
+    hint: 'Applicant and loan request captured',
+    purpose:
+      'Capture who is borrowing and what they need: the applicants and co-applicants, the loan request, any property pledged, and the product.',
+    movesOn: 'Choose the product and start the documents (Next step).',
+  },
+  {
+    key: 'documents',
+    status: 'DOCUMENTS_PENDING',
+    label: 'Documents',
+    hint: 'Collecting the borrower documents',
+    purpose: 'Collect and verify the documents the product asks for, from every applicant.',
+    movesOn: 'A credit reviewer sends the file to credit review once every mandatory document is accepted.',
+  },
+  {
+    key: 'review',
+    status: 'UNDER_REVIEW',
+    label: 'Credit review',
+    hint: 'Documents and eligibility reviewed',
+    purpose:
+      'Work out what the household can borrow: club the incomes, count the EMIs, and see which lenders will take the file and for how much.',
+    movesOn: 'A credit reviewer marks the file ready for submission.',
+  },
+  {
+    key: 'ready',
+    status: 'READY_FOR_SUBMISSION',
+    label: 'Ready',
+    hint: 'File complete, ready for a lender',
+    purpose: 'Choose the lender, open the lender case and build the frozen document package.',
+    movesOn: 'Submitting the lender case to the lender moves the file on by itself.',
+  },
+  {
+    key: 'lender',
+    status: 'SUBMITTED',
+    label: 'With lender',
+    hint: 'Logged in with one or more lenders',
+    purpose: 'The file is with the lender. Answer their queries until they decide.',
+    movesOn: "The lender's sanction, recorded on the lender case, moves the file on.",
+  },
+  {
+    key: 'sanctioned',
+    status: 'SANCTIONED',
+    label: 'Sanctioned',
+    hint: 'A lender sanctioned the loan',
+    purpose: 'Record the sanction terms and follow the disbursement.',
+    movesOn: 'A verified disbursement moves the file on.',
+  },
+  {
+    key: 'disbursed',
+    status: 'DISBURSED',
+    label: 'Disbursed',
+    hint: 'Loan amount paid out',
+    purpose: 'The loan is paid out. Check the disbursement and close the file.',
+    movesOn: 'The last step. Close the file once the payout is confirmed.',
+  },
 ];
+
+/** The stage to show: the one named in the address when it exists, else the stage the file is at. */
+export function selectedStageIndex(param: string | null, journey: JourneyState): number {
+  const named = JOURNEY.findIndex((j) => j.key === param);
+  return named >= 0 ? named : journey.activeIndex;
+}
+
+/** How a stage stands against where the file is. */
+export function stagePosition(
+  index: number,
+  journey: JourneyState,
+): 'done' | 'current' | 'upcoming' | 'stopped' {
+  if (index < journey.activeIndex || (index === journey.activeIndex && journey.activeDone)) return 'done';
+  if (index === journey.activeIndex) {
+    return journey.outcome && journey.outcome !== 'CLOSED' ? 'stopped' : 'current';
+  }
+  return 'upcoming';
+}
 
 export type JourneyOutcome = 'REJECTED' | 'WITHDRAWN' | 'CANCELLED' | 'CLOSED' | null;
 
@@ -149,21 +232,6 @@ export function statusTone(status: ApplicationStatus): 'success' | 'warning' | '
   if (status === 'DRAFT') return 'default';
   return 'info';
 }
-
-/** Tabs of the loan file, in order; the key is the ?tab= value so a link can open one. */
-export const FILE_TABS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'applicants', label: 'Applicants' },
-  { key: 'loan', label: 'Loan & security' },
-  { key: 'documents', label: 'Documents' },
-  { key: 'eligibility', label: 'Eligibility' },
-  { key: 'lenders', label: 'Lenders' },
-  { key: 'activity', label: 'Activity' },
-] as const;
-export type FileTab = (typeof FILE_TABS)[number]['key'];
-
-export const asFileTab = (v: string | null): FileTab =>
-  (FILE_TABS.find((t) => t.key === v)?.key ?? 'overview') as FileTab;
 
 /** One line for a status-history entry: "Draft → Documents pending". */
 export function transitionLabel(

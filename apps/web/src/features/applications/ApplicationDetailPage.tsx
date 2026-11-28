@@ -1,8 +1,9 @@
 // /applications/:id, the loan file (DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011; redesigned 2026-11-28 by Bhushan).
-// Laid out like a loan file: a front sheet (loan, borrower, amount, the stage on the road from draft to disbursal), the next step,
-// then tabs for the overview, applicants, loan and security, documents, eligibility, lenders and activity, with the people and the
-// hold in a side rail. Every change sends the version the screen loaded (If-Match), so a stale screen gets the conflict message.
-// The tab is in the address (?tab=documents), so a link can open the file on the right page.
+// Laid out like a loan file: a front sheet (loan, borrower, amount) and the road from draft to disbursal. The road drives the page:
+// it opens on the stage the file is at, each stage shows what it is for, a checklist of what it needs, the action that moves the
+// file on, and only that stage's work; any stage can be opened to look back or ahead. People, the customer status link, the status
+// history and the hold sit in a side rail; activity and follow-ups below. Every change sends the version the screen loaded
+// (If-Match), so a stale screen gets the conflict message. The stage is in the address (?stage=documents).
 import {
   Alert,
   Box,
@@ -12,40 +13,27 @@ import {
   Link,
   MenuItem,
   Stack,
-  Tab,
-  Tabs,
   TextField,
   Typography,
 } from '@mui/material';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { LeadFollowUps } from '../leads/LeadFollowUps';
-import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useLookup, useResource } from '../admin/api';
 import { ErrorAlert, Loading, formatDate } from '../admin/components';
 import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
-import { ChecklistCard } from '../documents/ChecklistCard';
 import { OwnersCard } from './ApplicationFileCards';
-import { CollateralCard } from './CollateralCard';
 import { StatusLinkCard } from './StatusLinkCard';
 
 import { UserName } from '../../shell/display';
 import { AppButton, FieldGrid } from '../../ui';
-import {
-  APPLICANT_TYPE_LABELS,
-  FILE_TABS,
-  asFileTab,
-  humanize,
-  journeyState,
-  type FileTab,
-} from './loan-file';
-import { ApplicantsTab } from './file/ApplicantsTab';
+import { APPLICANT_TYPE_LABELS, JOURNEY, humanize, journeyState, selectedStageIndex } from './loan-file';
 import { LoanFileHeader } from './file/LoanFileHeader';
-import { OverviewTab, Section } from './file/OverviewTab';
+import { Section } from './file/parts';
+import { StagePanel } from './file/StagePanel';
 import { StatusTimeline, type StatusHistoryEntry } from './file/StatusTimeline';
-import { EligibilityTab } from './file/EligibilityTab';
 import {
   CLOSABLE,
   STATUS_LABELS,
@@ -87,7 +75,6 @@ export function ApplicationDetailPage() {
   const { id } = useParams();
   const me = useMe();
   const [params, setParams] = useSearchParams();
-  const tab = asFileTab(params.get('tab'));
   const canUpdate = hasPermission(me.data, 'application.update');
   const app = useResource<Application>(id ? `/v1/applications/${id}` : null);
   const history = useLookup<StatusHistoryEntry>(id ? `/v1/applications/${id}/status-history` : '', {}, !!id);
@@ -96,16 +83,18 @@ export function ApplicationDetailPage() {
   if (!app.data) return <ErrorAlert error={app.error} />;
   const a = app.data;
   const entries = history.data ?? [];
-  const open = (t: FileTab) => {
+  const journey = journeyState(a.status, entries);
+  const selected = selectedStageIndex(params.get('stage'), journey);
+  const select = (index: number) => {
     const next = new URLSearchParams(params);
-    if (t === 'overview') next.delete('tab');
-    else next.set('tab', t);
+    if (index === journey.activeIndex) next.delete('stage');
+    else next.set('stage', JOURNEY[index]!.key);
     setParams(next, { replace: true });
   };
 
   return (
     <Box data-testid="application.file">
-      <LoanFileHeader app={a} journey={journeyState(a.status, entries)} />
+      <LoanFileHeader app={a} journey={journey} selectedStage={selected} onSelectStage={select} />
       {a.onHold && (
         <Alert severity="warning" sx={{ mb: 2 }} data-testid="application.hold-banner">
           On hold: {a.holdReason ?? 'no reason recorded'}
@@ -127,59 +116,20 @@ export function ApplicationDetailPage() {
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <TransitionCard app={a} />
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs
-              value={tab}
-              onChange={(_e, v: FileTab) => open(v)}
-              variant="scrollable"
-              scrollButtons={false}
-              aria-label="Loan file sections"
-            >
-              {FILE_TABS.map((t) => (
-                <Tab
-                  key={t.key}
-                  value={t.key}
-                  label={t.label}
-                  data-testid={`application.tab-${t.key}`}
-                  sx={{ textTransform: 'none', fontWeight: 600, minWidth: 0, px: 1.5 }}
-                />
-              ))}
-            </Tabs>
+          <StagePanel
+            app={a}
+            journey={journey}
+            index={selected}
+            onSelect={select}
+            nextStep={<TransitionCard app={a} />}
+            loanRequest={<DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />}
+          />
+          <Box sx={{ mt: 1 }} data-testid="application.activity">
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+              Activity and follow-ups
+            </Typography>
+            <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
           </Box>
-
-          {tab === 'overview' && <OverviewTab app={a} history={entries} onOpen={open} />}
-          {tab === 'applicants' && <ApplicantsTab app={a} />}
-          {tab === 'loan' && (
-            <>
-              <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
-              <CollateralCard app={a} />
-            </>
-          )}
-          {tab === 'documents' && <ChecklistCard applicationId={a.id} />}
-          {tab === 'eligibility' && <EligibilityTab app={a} />}
-          {tab === 'lenders' && (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Which lenders will take this file, and for how much, is worked out on the{' '}
-                <Link component="button" type="button" underline="hover" onClick={() => open('eligibility')}>
-                  Eligibility tab
-                </Link>
-                .
-              </Typography>
-              <div data-slot="application.lender-cases">
-                <LenderCasePanel applicationId={a.id} />
-              </div>
-            </>
-          )}
-          {tab === 'activity' && (
-            <Stack spacing={3}>
-              <Section title="Status history" testId="application.activity-history">
-                <StatusTimeline entries={entries} />
-              </Section>
-              <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
-            </Stack>
-          )}
         </Box>
 
         <Stack
@@ -189,6 +139,9 @@ export function ApplicationDetailPage() {
         >
           <PeopleCard app={a} />
           <StatusLinkCard applicationId={a.id} />
+          <Section title="Status history" testId="application.activity-history">
+            <StatusTimeline entries={entries} />
+          </Section>
           <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
         </Stack>
       </Box>
