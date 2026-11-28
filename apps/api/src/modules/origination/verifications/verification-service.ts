@@ -1,6 +1,5 @@
 // apps/api/src/modules/origination/verifications/verification-service.ts
 // Module 22: Verification (MOD-VER) — Service implementation
-import crypto from 'node:crypto';
 import {
   AppError,
   type CreateVerificationInput,
@@ -17,11 +16,9 @@ import { withIdempotency } from '@dsa/kernel';
 import { sql } from 'kysely';
 import { monotonicFactory } from 'ulid';
 import type { ApiDeps } from '../../types';
+import { createKeyedHasher, vendorCaseId } from './keyed-hash';
 
 const nextUlid = monotonicFactory();
-
-/** Used when no deployment secret is configured (development and tests), like the documents module does. */
-const processSecret = crypto.randomBytes(32).toString('hex');
 
 /**
  * True when every CHECK constraint definition on verification.check_type lists `checkType` (no such constraint means no restriction).
@@ -248,9 +245,7 @@ export class VerificationService {
     // withIdempotency stores a plain SHA-256 of the whole request, and a PAN or an account number hashed that way can be brute-forced
     // offline. So it is given a body in which the identifier (PAN, GSTIN or account number) and the name are replaced by keyed hashes
     // (the key comes from the deployment secret). The IFSC code is a public branch code and stays as it is.
-    const key = this.kycKey();
-    const keyed = (label: string, value: string) =>
-      crypto.createHmac('sha256', key).update(`${label}\n${value}`).digest('hex');
+    const keyed = createKeyedHasher(this.deps.documentLinkSecret);
     const identifier =
       input.check === 'BANK_ACCOUNT'
         ? { accountNumber: keyed('accountNumber', input.accountNumber), ifsc: input.ifsc }
@@ -266,7 +261,7 @@ export class VerificationService {
     };
     // The vendor's case id is stable for one Idempotency-Key (the same scope the key has: tenant, user, key), so a retry after a
     // timeout reaches the vendor with the same case id and the vendor can recognise it.
-    const caseId = `idem_${keyed('case', `${ctx.principal.tenantId}:${ctx.principal.id}:${idempotencyKey}`).slice(0, 20)}`;
+    const caseId = vendorCaseId(keyed, ctx.principal.tenantId, ctx.principal.id, idempotencyKey);
 
     return this.deps.txRunner.withTenantTx(ctx, async (tx) => {
       const result = await withIdempotency(
@@ -381,15 +376,6 @@ export class VerificationService {
         'Bank account checks are not ready on this server: the database update 0138 has not been applied. Nothing was sent to the provider.',
       );
     }
-  }
-
-  /** A key of its own, derived from the deployment secret (as document-store.ts derives its keys), for the keyed hashes above. */
-  private kycKey(): Buffer {
-    const secret =
-      this.deps.documentLinkSecret && this.deps.documentLinkSecret.length >= 32
-        ? this.deps.documentLinkSecret
-        : processSecret;
-    return crypto.createHmac('sha256', secret).update('dsa:verification-idempotency:v1').digest();
   }
 
   /**

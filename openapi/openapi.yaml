@@ -142,7 +142,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a164
+          enum: &a166
             - ACTIVE
             - SUSPENDED
             - OFFBOARDING
@@ -334,7 +334,7 @@ components:
               attributes:
                 type: object
                 additionalProperties: {}
-                default: &a165 {}
+                default: &a167 {}
             required:
               - code
               - label
@@ -608,7 +608,7 @@ components:
       properties:
         decision:
           type: string
-          enum: &a167
+          enum: &a169
             - APPROVED
             - DENIED
         comments:
@@ -681,7 +681,7 @@ components:
       properties:
         status:
           type: string
-          enum: &a166
+          enum: &a168
             - CANDIDATE
             - STAGING
             - PUBLISHED
@@ -2207,6 +2207,7 @@ components:
             - SHARE_WITH_LENDER
             - VERIFICATION_CHECK
             - MARKETING
+            - BUREAU_PULL
         purposeTarget:
           type: string
       required:
@@ -3369,6 +3370,8 @@ paths:
                             - lender_policy.read
                             - lender_policy.manage
                             - lender_match.run
+                            - credit_report.pull
+                            - credit_report.read
                         scope:
                           type: string
                           enum:
@@ -11318,7 +11321,7 @@ paths:
                     pattern: ^adj_[0-9A-HJKMNP-TV-Z]{26}$
                   adjustmentType:
                     type: string
-                    enum: &a171
+                    enum: &a173
                       - WRITE_OFF
                       - CLAWBACK
                       - CORRECTION
@@ -66203,6 +66206,1091 @@ paths:
                       - retryable
                 required:
                   - error
+  /v1/customers/{id}/credit-reports:
+    post:
+      operationId: API-CRP-001
+      summary: POST /v1/customers/{id}/credit-reports
+      tags:
+        - MOD-VER Verification
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,128}$
+          required: true
+          name: Idempotency-Key
+          in: header
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bureau:
+                  type: string
+                  enum: &a161
+                    - CIBIL
+                    - CRIF
+                    - EXPERIAN
+                    - EQUIFAX
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                pan:
+                  type: string
+                dateOfBirth:
+                  type: string
+              required:
+                - bureau
+                - name
+                - pan
+                - dateOfBirth
+              additionalProperties: false
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^crp_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  customerId:
+                    type: string
+                  consentRecordId:
+                    type: string
+                    pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
+                  bureau:
+                    type: string
+                    enum: *a161
+                  provider:
+                    type: string
+                  outcome:
+                    type: string
+                    enum: &a162
+                      - SCORED
+                      - NO_HISTORY
+                  reportDate:
+                    type: string
+                  score:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 300
+                    maximum: 900
+                  activeAccounts:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  monthlyEmi:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  maxDpd12m:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  enquiries6m:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  vendorRef:
+                    type:
+                      - string
+                      - "null"
+                  cost:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  pulledBy:
+                    type: string
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  pulledAt:
+                    type: string
+                    format: date-time
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - tenantId
+                  - customerId
+                  - consentRecordId
+                  - bureau
+                  - provider
+                  - outcome
+                  - reportDate
+                  - score
+                  - activeAccounts
+                  - monthlyEmi
+                  - maxDpd12m
+                  - enquiries6m
+                  - vendorRef
+                  - cost
+                  - pulledBy
+                  - pulledAt
+                  - lockVersion
+                  - createdAt
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    get:
+      operationId: API-CRP-003
+      summary: GET /v1/customers/{id}/credit-reports
+      tags:
+        - MOD-VER Verification
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: string
+            enum: *a161
+          required: false
+          name: bureau
+          in: query
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^crp_[0-9A-HJKMNP-TV-Z]{26}$
+                        tenantId:
+                          type: string
+                        customerId:
+                          type: string
+                        consentRecordId:
+                          type: string
+                          pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
+                        bureau:
+                          type: string
+                          enum: *a161
+                        provider:
+                          type: string
+                        outcome:
+                          type: string
+                          enum: *a162
+                        reportDate:
+                          type: string
+                        score:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 300
+                          maximum: 900
+                        activeAccounts:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                        monthlyEmi:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        maxDpd12m:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                        enquiries6m:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                        vendorRef:
+                          type:
+                            - string
+                            - "null"
+                        cost:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        pulledBy:
+                          type: string
+                          pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                        pulledAt:
+                          type: string
+                          format: date-time
+                        lockVersion:
+                          type: integer
+                          minimum: 0
+                        createdAt:
+                          type: string
+                          format: date-time
+                      required:
+                        - id
+                        - tenantId
+                        - customerId
+                        - consentRecordId
+                        - bureau
+                        - provider
+                        - outcome
+                        - reportDate
+                        - score
+                        - activeAccounts
+                        - monthlyEmi
+                        - maxDpd12m
+                        - enquiries6m
+                        - vendorRef
+                        - cost
+                        - pulledBy
+                        - pulledAt
+                        - lockVersion
+                        - createdAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/customers/{id}/credit-reports/latest:
+    get:
+      operationId: API-CRP-002
+      summary: GET /v1/customers/{id}/credit-reports/latest
+      tags:
+        - MOD-VER Verification
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+            enum: *a161
+          required: false
+          name: bureau
+          in: query
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^crp_[0-9A-HJKMNP-TV-Z]{26}$
+                  tenantId:
+                    type: string
+                  customerId:
+                    type: string
+                  consentRecordId:
+                    type: string
+                    pattern: ^cnst_[0-9A-HJKMNP-TV-Z]{26}$
+                  bureau:
+                    type: string
+                    enum: *a161
+                  provider:
+                    type: string
+                  outcome:
+                    type: string
+                    enum: *a162
+                  reportDate:
+                    type: string
+                  score:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 300
+                    maximum: 900
+                  activeAccounts:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  monthlyEmi:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  maxDpd12m:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  enquiries6m:
+                    type:
+                      - integer
+                      - "null"
+                    minimum: 0
+                  vendorRef:
+                    type:
+                      - string
+                      - "null"
+                  cost:
+                    type:
+                      - object
+                      - "null"
+                    properties:
+                      amount:
+                        type: string
+                        pattern: ^\d{1,16}\.\d{2}$
+                      currency:
+                        type: string
+                        pattern: ^[A-Z]{3}$
+                    required:
+                      - amount
+                      - currency
+                  pulledBy:
+                    type: string
+                    pattern: ^usr_[0-9A-HJKMNP-TV-Z]{26}$
+                  pulledAt:
+                    type: string
+                    format: date-time
+                  lockVersion:
+                    type: integer
+                    minimum: 0
+                  createdAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - tenantId
+                  - customerId
+                  - consentRecordId
+                  - bureau
+                  - provider
+                  - outcome
+                  - reportDate
+                  - score
+                  - activeAccounts
+                  - monthlyEmi
+                  - maxDpd12m
+                  - enquiries6m
+                  - vendorRef
+                  - cost
+                  - pulledBy
+                  - pulledAt
+                  - lockVersion
+                  - createdAt
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
   /v1/config:
     get:
       operationId: CFG-GET-CONFIG
@@ -68896,7 +69984,7 @@ paths:
                 weeklyHours:
                   type: object
                   properties:
-                    MON: &a161
+                    MON: &a163
                       type: array
                       items:
                         type: object
@@ -68912,19 +70000,19 @@ paths:
                           - end
                         additionalProperties: false
                       maxItems: 4
-                    TUE: *a161
-                    WED: *a161
-                    THU: *a161
-                    FRI: *a161
-                    SAT: *a161
-                    SUN: *a161
+                    TUE: *a163
+                    WED: *a163
+                    THU: *a163
+                    FRI: *a163
+                    SAT: *a163
+                    SUN: *a163
                 holidays:
                   type: array
                   items:
                     type: string
                     pattern: ^\d{4}-\d{2}-\d{2}$
                   maxItems: 100
-                  default: &a163 []
+                  default: &a165 []
                 quietHours:
                   type:
                     - object
@@ -69983,7 +71071,7 @@ paths:
                       weeklyHours:
                         type: object
                         properties:
-                          MON: &a162
+                          MON: &a164
                             type: array
                             items:
                               type: object
@@ -69999,19 +71087,19 @@ paths:
                                 - end
                               additionalProperties: false
                             maxItems: 4
-                          TUE: *a162
-                          WED: *a162
-                          THU: *a162
-                          FRI: *a162
-                          SAT: *a162
-                          SUN: *a162
+                          TUE: *a164
+                          WED: *a164
+                          THU: *a164
+                          FRI: *a164
+                          SAT: *a164
+                          SUN: *a164
                       holidays:
                         type: array
                         items:
                           type: string
                           pattern: ^\d{4}-\d{2}-\d{2}$
                         maxItems: 100
-                        default: *a163
+                        default: *a165
                       quietHours:
                         type:
                           - object
@@ -70290,7 +71378,7 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: *a164
+            enum: *a166
           required: false
           name: status
           in: query
@@ -72243,7 +73331,7 @@ paths:
                       attributes:
                         type: object
                         additionalProperties: {}
-                        default: *a165
+                        default: *a167
                     required:
                       - code
                       - label
@@ -74590,7 +75678,7 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: *a166
+                  enum: *a168
                 gitTag:
                   type:
                     - string
@@ -75074,7 +76162,7 @@ paths:
               properties:
                 decision:
                   type: string
-                  enum: *a167
+                  enum: *a169
                 comments:
                   type: string
               required:
@@ -76314,20 +77402,20 @@ paths:
                 modules:
                   type: object
                   properties:
-                    MOD-WFA: &a168
+                    MOD-WFA: &a170
                       type: boolean
-                    MOD-COM: *a168
-                    MOD-PAY: *a168
-                    MOD-REC: *a168
-                    MOD-INV: *a168
-                    MOD-RPT: *a168
-                    MOD-IMP: *a168
-                    MOD-CON: *a168
-                    MOD-CPT: *a168
-                    MOD-PERF: *a168
-                    MOD-VER: *a168
-                    MOD-DSH: *a168
-                    MOD-API: *a168
+                    MOD-COM: *a170
+                    MOD-PAY: *a170
+                    MOD-REC: *a170
+                    MOD-INV: *a170
+                    MOD-RPT: *a170
+                    MOD-IMP: *a170
+                    MOD-CON: *a170
+                    MOD-CPT: *a170
+                    MOD-PERF: *a170
+                    MOD-VER: *a170
+                    MOD-DSH: *a170
+                    MOD-API: *a170
               required:
                 - modules
               additionalProperties: false
@@ -78757,7 +79845,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: &a169
+                  enum: &a171
                     - MT940
                     - CSV
                   default: MT940
@@ -79010,7 +80098,7 @@ paths:
                   pattern: ^\d{4}-(0[1-9]|1[0-2])$
                 format:
                   type: string
-                  enum: *a169
+                  enum: *a171
                   default: MT940
                 rawFeedContent:
                   type: string
@@ -79732,7 +80820,7 @@ paths:
           in: query
         - schema:
             type: string
-            enum: &a170
+            enum: &a172
               - SHORT_REMITTANCE
               - OVER_REMITTANCE
               - MISSING_REMITTANCE
@@ -79987,7 +81075,7 @@ paths:
                     - INVESTIGATING
                 classification:
                   type: string
-                  enum: *a170
+                  enum: *a172
                 resolutionNote:
                   type: string
                   minLength: 5
@@ -80229,7 +81317,7 @@ paths:
               properties:
                 type:
                   type: string
-                  enum: *a171
+                  enum: *a173
                 amount:
                   type: number
                   exclusiveMinimum: 0

@@ -9,25 +9,9 @@ import {
   type RequestContext,
 } from '@dsa/contracts';
 import type { ApiDeps } from '../../types';
+import { createCreditReportRouter } from './credit-report-router';
+import { readIdempotencyKey } from './idempotency-key';
 import { VerificationService } from './verification-service';
-
-/** The Idempotency-Key of a verification POST: required, 8 to 128 letters, digits, underscores or hyphens. */
-function readIdempotencyKey(req: Request): string {
-  const idempotencyKey = req.get('Idempotency-Key');
-  if (!idempotencyKey) {
-    throw AppError.of(
-      'VALIDATION_ERROR',
-      'Idempotency-Key header is required for creating verification checks.',
-      [{ field: 'Idempotency-Key', issue: 'REQUIRED' }],
-    );
-  }
-  if (!/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
-    throw AppError.of('VALIDATION_ERROR', 'Invalid Idempotency-Key format.', [
-      { field: 'Idempotency-Key', issue: 'INVALID_FORMAT' },
-    ]);
-  }
-  return idempotencyKey;
-}
 
 export function createRouter(deps: ApiDeps, serviceOverride?: VerificationService): Router {
   const router = Router();
@@ -112,6 +96,9 @@ export function createRouter(deps: ApiDeps, serviceOverride?: VerificationServic
       next(err);
     }
   });
+
+  // P1-05: the credit-bureau soft pull (API-CRP-001 to 003).
+  router.use(createCreditReportRouter(deps));
 
   return router;
 }

@@ -3,7 +3,12 @@
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import {
   CreateVerificationSchema,
+  CreditReportSchema,
+  LatestCreditReportQuerySchema,
+  ListCreditReportsQuerySchema,
+  ListCreditReportsResponseSchema,
   ListVerificationsQuerySchema,
+  PullCreditReportSchema,
   RunVerificationCheckSchema,
 } from '@dsa/contracts';
 import { registerOperation } from '../../../http/openapi-op';
@@ -44,5 +49,36 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     operationId: 'VER-GET-VERIFICATIONS-BY-ID',
     summary: 'GET /v1/verifications/:id',
     tag,
+  });
+
+  // P1-05 credit-bureau soft pull. The body of the POST carries a PAN and a date of birth: sent to the bureau, never stored or returned.
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/customers/:id/credit-reports',
+    operationId: 'API-CRP-001',
+    summary: 'POST /v1/customers/{id}/credit-reports',
+    tag,
+    body: PullCreditReportSchema,
+    response: CreditReportSchema,
+    status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/customers/:id/credit-reports/latest',
+    operationId: 'API-CRP-002',
+    summary: 'GET /v1/customers/{id}/credit-reports/latest',
+    tag,
+    query: LatestCreditReportQuerySchema,
+    response: CreditReportSchema,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/customers/:id/credit-reports',
+    operationId: 'API-CRP-003',
+    summary: 'GET /v1/customers/{id}/credit-reports',
+    tag,
+    query: ListCreditReportsQuerySchema,
+    response: ListCreditReportsResponseSchema,
   });
 }
