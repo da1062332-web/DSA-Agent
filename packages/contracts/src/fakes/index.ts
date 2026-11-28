@@ -12,3 +12,4 @@ export * from './fake-complaint-subject';
 export * from './fake-product-version';
 export * from './fake-lender';
 export * from './fake-kyc';
+export * from './fake-bureau';

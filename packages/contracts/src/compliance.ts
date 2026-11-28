@@ -21,6 +21,8 @@ export const CONSENT_PURPOSES = [
   'SHARE_WITH_LENDER',
   'VERIFICATION_CHECK',
   'MARKETING',
+  // Added 2026-11-28 (additive, P1-05, migration 0130): consent to pull a credit-bureau report. Its purpose_target is the bureau.
+  'BUREAU_PULL',
 ] as const;
 export type ConsentPurposeCode = (typeof CONSENT_PURPOSES)[number];
 export const ConsentPurposeSchema = z.enum(CONSENT_PURPOSES);

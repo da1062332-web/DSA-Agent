@@ -3,8 +3,14 @@
 // Fakes: fakes/fake-{consent,party,data-sharing,user-directory}.ts (Contracts §4.5).
 import type { RequestContext, Tx } from '../kernel';
 
+// BUREAU_PULL added 2026-11-28 (additive, P1-05, migration 0130): its purpose target is the credit bureau (CIBIL, CRIF, ...).
 export type ConsentPurpose =
-  'CONTACT' | 'LOAN_PROCESSING' | 'SHARE_WITH_LENDER' | 'VERIFICATION_CHECK' | 'MARKETING';
+  | 'CONTACT'
+  | 'LOAN_PROCESSING'
+  | 'SHARE_WITH_LENDER'
+  | 'VERIFICATION_CHECK'
+  | 'MARKETING'
+  | 'BUREAU_PULL';
 
 export interface ConsentPort {
   /** ACTIVE consent on the customer OR on any lead whose customer_id = customerId (consents captured pre-conversion stay valid). */

@@ -210,6 +210,18 @@ export const STANDARD_CAPABILITY_DESCRIPTORS: CapabilityDescriptor[] = [
     supportedProviders: ['KARZA', 'SETU', 'MOCK'],
   },
   {
+    capability: 'BUREAU.SOFT_PULL',
+    displayName: 'Credit Bureau Soft Pull',
+    category: 'BUREAU',
+    // P1-05 (2026-11-28). No bureau vendor is chosen yet: CRIF is a placeholder provider id until it is. The request carries a PAN and a
+    // date of birth, which the vendor receives and nothing here stores. Optional configuration: timeoutMs and unitCostAmount (what one
+    // pull costs, a decimal string such as "45.00"; when absent no cost is recorded).
+    description: 'Soft pull of a credit-bureau summary (score, active accounts, monthly EMIs, days past due, enquiries) with the customer’s consent',
+    requiredConfigFields: ['apiEndpoint'],
+    dataClassification: 'S3',
+    supportedProviders: ['CRIF', 'MOCK'],
+  },
+  {
     capability: 'STORAGE.DOC_SCAN',
     displayName: 'Document Malware Scan',
     category: 'STORAGE',
