@@ -24698,6 +24698,84 @@ paths:
           description: VERSION_CONFLICT or INVALID_STATE (with a lender already, or removing the PRIMARY party)
         "422":
           description: VALIDATION_ERROR (customer already a party; party not on the application; relationshipToPrimary REQUIRED for a co-applicant, FAMILY_NEEDS_INDIVIDUALS, DIRECTOR_NEEDS_ENTITY, or a second SPOUSE)
+  /v1/applications/{id}/status-history:
+    get:
+      tags: *a106
+      operationId: API-APP-HIST-001
+      summary: "The status journey of the application, oldest first: every transition and roll-up with who, when and the recorded reason (application.read)"
+      responses:
+        "200":
+          description: Status history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        fromStatus:
+                          type:
+                            - string
+                            - "null"
+                        toStatus:
+                          type: string
+                        fromSubStatus:
+                          type:
+                            - string
+                            - "null"
+                        toSubStatus:
+                          type:
+                            - string
+                            - "null"
+                        transitionCode:
+                          type: string
+                        reason:
+                          type:
+                            - string
+                            - "null"
+                        actorId:
+                          type: string
+                        causedByLenderCaseId:
+                          type:
+                            - string
+                            - "null"
+                        occurredAt:
+                          type: string
+                      required:
+                        - id
+                        - fromStatus
+                        - toStatus
+                        - fromSubStatus
+                        - toSubStatus
+                        - transitionCode
+                        - reason
+                        - actorId
+                        - causedByLenderCaseId
+                        - occurredAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND (also another tenant or outside the caller scope)
   /v1/applications/{id}/collateral:
     get:
       tags: *a106

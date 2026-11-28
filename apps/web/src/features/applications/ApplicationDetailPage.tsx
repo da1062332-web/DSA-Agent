@@ -1,35 +1,49 @@
-// /applications/:id (owner: Dev 3; DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011).
-// Edit the applicant request while the status allows it, put the file on hold with a reason, and manage parties and owners.
-// Every change sends the version the screen loaded (If-Match), so a stale screen gets the
-// conflict message. The lender-case panel (Dev 4) mounts in the slot at the bottom.
+// /applications/:id, the loan file (DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011; redesigned 2026-11-28 by Bhushan).
+// Laid out like a loan file: a front sheet (loan, borrower, amount, the stage on the road from draft to disbursal), the next step,
+// then tabs for the overview, applicants, loan and security, documents, eligibility, lenders and activity, with the people and the
+// hold in a side rail. Every change sends the version the screen loaded (If-Match), so a stale screen gets the conflict message.
+// The tab is in the address (?tab=documents), so a link can open the file on the right page.
 import {
   Alert,
   Box,
-  Button,
   Card,
   CardContent,
-  Grid,
+  Collapse,
   Link,
   MenuItem,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from '@mui/material';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link as RouterLink, useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { LeadFollowUps } from '../leads/LeadFollowUps';
 import { LenderCasePanel } from '../lender-cases/LenderCasePanel';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useCommand, useLookup, useResource } from '../admin/api';
-import { ErrorAlert, Loading, PageHeader, StatusChip, formatDate } from '../admin/components';
+import { ErrorAlert, Loading, formatDate } from '../admin/components';
 import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
-import { OwnersCard, PartiesCard } from './ApplicationFileCards';
+import { OwnersCard } from './ApplicationFileCards';
 import { CollateralCard } from './CollateralCard';
 import { EligibilityCard } from './EligibilityCard';
-import { CustomerName, BranchName, UserName } from '../../shell/display';
-import { AppButton, AppCard, FieldGrid } from '../../ui';
+import { UserName } from '../../shell/display';
+import { AppButton, FieldGrid } from '../../ui';
+import {
+  APPLICANT_TYPE_LABELS,
+  FILE_TABS,
+  asFileTab,
+  humanize,
+  journeyState,
+  type FileTab,
+} from './loan-file';
+import { ApplicantsTab } from './file/ApplicantsTab';
+import { LoanFileHeader } from './file/LoanFileHeader';
+import { OverviewTab, Section } from './file/OverviewTab';
+import { StatusTimeline, type StatusHistoryEntry } from './file/StatusTimeline';
 import {
   CLOSABLE,
   STATUS_LABELS,
@@ -70,22 +84,28 @@ function getAmountString(amt: unknown): string {
 export function ApplicationDetailPage() {
   const { id } = useParams();
   const me = useMe();
+  const [params, setParams] = useSearchParams();
+  const tab = asFileTab(params.get('tab'));
   const canUpdate = hasPermission(me.data, 'application.update');
   const app = useResource<Application>(id ? `/v1/applications/${id}` : null);
+  const history = useLookup<StatusHistoryEntry>(id ? `/v1/applications/${id}/status-history` : '', {}, !!id);
 
   if (app.isPending) return <Loading />;
   if (!app.data) return <ErrorAlert error={app.error} />;
   const a = app.data;
+  const entries = history.data ?? [];
+  const open = (t: FileTab) => {
+    const next = new URLSearchParams(params);
+    if (t === 'overview') next.delete('tab');
+    else next.set('tab', t);
+    setParams(next, { replace: true });
+  };
 
   return (
-    <>
-      <PageHeader
-        title="Application"
-        subtitle={`${a.productCategory} · ${a.currency || 'INR'} ${getAmountString(a.requestedAmount)} · version ${a.version ?? 0}`}
-        action={<StatusChip active={!a.onHold} label={STATUS_LABELS[a.status]} />}
-      />
+    <Box data-testid="application.file">
+      <LoanFileHeader app={a} journey={journeyState(a.status, entries)} />
       {a.onHold && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert severity="warning" sx={{ mb: 2 }} data-testid="application.hold-banner">
           On hold: {a.holdReason ?? 'no reason recorded'}
           {a.holdUntil ? ` until ${formatDate(a.holdUntil)}` : ''}.
         </Alert>
@@ -96,78 +116,147 @@ export function ApplicationDetailPage() {
         </Alert>
       )}
 
-      <RelationsCard app={a} />
-      <TransitionCard app={a} />
-      <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
-      <PartiesCard app={a} />
-      <CollateralCard app={a} />
-      <OwnersCard app={a} />
-      <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
-      <EligibilityCard
-        applicationId={a.id}
-        applicationStatus={a.status}
-        hasProduct={!!a.productVersionId}
-        autoRun
-        productVersionId={a.productVersionId}
-        updatedAt={a.updatedAt}
-        status={a.status}
-      />
-      <ChecklistCard applicationId={a.id} />
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 3,
+          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 320px' },
+          alignItems: 'start',
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <TransitionCard app={a} />
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Tabs
+              value={tab}
+              onChange={(_e, v: FileTab) => open(v)}
+              variant="scrollable"
+              scrollButtons={false}
+              aria-label="Loan file sections"
+            >
+              {FILE_TABS.map((t) => (
+                <Tab
+                  key={t.key}
+                  value={t.key}
+                  label={t.label}
+                  data-testid={`application.tab-${t.key}`}
+                  sx={{ textTransform: 'none', fontWeight: 600, minWidth: 0, px: 1.5 }}
+                />
+              ))}
+            </Tabs>
+          </Box>
 
-      <div data-slot="application.lender-cases">
-        <LenderCasePanel applicationId={a.id} />
-      </div>
+          {tab === 'overview' && <OverviewTab app={a} history={entries} onOpen={open} />}
+          {tab === 'applicants' && <ApplicantsTab app={a} />}
+          {tab === 'loan' && (
+            <>
+              <DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />
+              <CollateralCard app={a} />
+            </>
+          )}
+          {tab === 'documents' && <ChecklistCard applicationId={a.id} />}
+          {tab === 'eligibility' && (
+            <EligibilityCard
+              applicationId={a.id}
+              applicationStatus={a.status}
+              hasProduct={!!a.productVersionId}
+              autoRun
+              productVersionId={a.productVersionId}
+              updatedAt={a.updatedAt}
+              status={a.status}
+            />
+          )}
+          {tab === 'lenders' && (
+            <div data-slot="application.lender-cases">
+              <LenderCasePanel applicationId={a.id} />
+            </div>
+          )}
+          {tab === 'activity' && (
+            <Stack spacing={3}>
+              <Section title="Status history" testId="application.activity-history">
+                <StatusTimeline entries={entries} />
+              </Section>
+              <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
+            </Stack>
+          )}
+        </Box>
 
-      <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
-    </>
+        <Stack
+          spacing={3}
+          sx={{ position: { lg: 'sticky' }, top: { lg: 88 } }}
+          data-testid="application.rail"
+        >
+          <PeopleCard app={a} />
+          <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
+        </Stack>
+      </Box>
+    </Box>
   );
 }
 
-/** Who and what the file belongs to (QA plan Module 06 step 7: lead, customer and application relationships). */
-function RelationsCard({ app }: { app: Application }) {
+/** Who owns the file: the sales owner and the operations owner, with the change form behind a link. */
+function PeopleCard({ app }: { app: Application }) {
   const me = useMe();
+  const [changing, setChanging] = useState(false);
+  const canAssign = hasPermission(me.data, 'application.assign');
   return (
-    <AppCard dataTestId="application.relations" padding="dense">
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems={{ md: 'center' }}>
-        <Typography
-          variant="body2"
-          component="span"
-          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-        >
-          Customer: <CustomerName id={app.customerId} linkToProfile />
-        </Typography>
-        <Typography variant="body2">
-          Branch: <BranchName id={app.branchId} />
-        </Typography>
-        <Typography variant="body2">
-          Sales owner: <UserName id={app.salesOwnerId} fallback="Not assigned" />
-        </Typography>
-        <Typography variant="body2">
-          Operations owner: <UserName id={app.opsOwnerId} fallback="Not assigned" />
-        </Typography>
-        <Typography variant="body2">Opened: {formatDate(app.createdAt)}</Typography>
-        {hasPermission(me.data, 'document.upload') && (
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: { xs: 'flex-start', md: 'flex-end' },
-              alignItems: 'center',
-              ml: { md: 'auto' },
-            }}
+    <Section
+      title="People"
+      testId="application.people"
+      action={
+        canAssign ? (
+          <Link
+            component="button"
+            type="button"
+            variant="body2"
+            underline="hover"
+            onClick={() => setChanging((c) => !c)}
+            data-testid="application.change-owners"
           >
-            <AppButton
-              size="small"
-              variant="outlined"
-              to={`/document-sharing?applicationId=${encodeURIComponent(app.id)}&action=upload-link`}
-              dataTestId="application.upload-link"
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Send customer upload link
-            </AppButton>
-          </Box>
-        )}
-      </Stack>
-    </AppCard>
+            {changing ? 'Close' : 'Change'}
+          </Link>
+        ) : undefined
+      }
+    >
+      <PersonLine role="Sales owner" id={app.salesOwnerId} />
+      <PersonLine role="Operations owner" id={app.opsOwnerId} />
+      <Collapse in={changing} unmountOnExit>
+        <Box sx={{ mt: 2, mx: -2.5, mb: -5 }}>
+          <OwnersCard app={app} />
+        </Box>
+      </Collapse>
+    </Section>
+  );
+}
+
+function PersonLine({ role, id }: { role: string; id: string | null }) {
+  return (
+    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 0.75 }}>
+      <Box
+        sx={{
+          width: 30,
+          height: 30,
+          borderRadius: '50%',
+          bgcolor: id ? 'primary.main' : 'grey.200',
+          color: id ? '#fff' : 'text.disabled',
+          display: 'grid',
+          placeItems: 'center',
+          fontSize: 12,
+          fontWeight: 700,
+          flexShrink: 0,
+        }}
+      >
+        {role.charAt(0)}
+      </Box>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography variant="caption" color="text.secondary" component="div">
+          {role}
+        </Typography>
+        <Typography variant="body2" component="div" sx={{ fontWeight: 600 }}>
+          <UserName id={id} fallback="Not assigned" />
+        </Typography>
+      </Box>
+    </Stack>
   );
 }
 
@@ -198,7 +287,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
     <Card sx={{ mb: 3 }}>
       <CardContent>
         <Typography variant="h6" gutterBottom>
-          Applicant request
+          Loan request
         </Typography>
         <ErrorAlert error={save.error} />
         {!canEditDetails(app.status) && (
@@ -242,7 +331,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
             <MenuItem value="">Not set</MenuItem>
             {PURPOSES.map((p) => (
               <MenuItem key={p} value={p}>
-                {p.replace(/_/g, ' ').toLowerCase()}
+                {humanize(p)}
               </MenuItem>
             ))}
           </TextField>
@@ -255,7 +344,7 @@ function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
           >
             {APPLICANT_TYPES.map((t) => (
               <MenuItem key={t} value={t}>
-                {t.replace(/_/g, ' ').toLowerCase()}
+                {APPLICANT_TYPE_LABELS[t] ?? humanize(t)}
               </MenuItem>
             ))}
           </TextField>
@@ -294,65 +383,60 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
 
   if (!canHoldNow) return null;
   return (
-    <Card sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Hold
-        </Typography>
-        <ErrorAlert error={hold.error} />
-        {app.onHold ? (
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Typography variant="body2">Reason: {app.holdReason}</Typography>
-            <AppButton
-              variant="outlined"
-              size="small"
-              loading={hold.isPending}
-              onClick={() => hold.mutate({ onHold: false })}
-            >
-              Clear hold
-            </AppButton>
-          </Stack>
-        ) : (
-          <StepRow
-            action={
-              <AppButton
-                variant="danger"
-                loading={hold.isPending}
-                disabled={!isValidHoldReason(reason)}
-                onClick={() =>
-                  hold.mutate({
-                    onHold: true,
-                    reason: reason.trim(),
-                    until: until ? `${until}T00:00:00Z` : null,
-                  })
-                }
-              >
-                Put on hold
-              </AppButton>
+    <Section title="Hold" testId="application.hold">
+      <ErrorAlert error={hold.error} />
+      {app.onHold ? (
+        <Stack spacing={1.5}>
+          <Typography variant="body2">
+            On hold: {app.holdReason}
+            {app.holdUntil ? ` (until ${formatDate(app.holdUntil)})` : ''}
+          </Typography>
+          <AppButton
+            variant="outlined"
+            size="small"
+            loading={hold.isPending}
+            onClick={() => hold.mutate({ onHold: false })}
+            dataTestId="application.clear-hold"
+          >
+            Clear hold
+          </AppButton>
+        </Stack>
+      ) : (
+        <Stack spacing={1.5}>
+          <Typography variant="caption" color="text.secondary">
+            Pause the file while you wait on the customer. The team sees the reason.
+          </Typography>
+          <TextField
+            label="Reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            helperText="3 to 200 characters."
+            inputProps={{ 'data-testid': 'application.hold-reason' }}
+          />
+          <TextField
+            label="Hold until (optional)"
+            type="date"
+            value={until}
+            onChange={(e) => setUntil(e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+          <AppButton
+            variant="danger"
+            loading={hold.isPending}
+            disabled={!isValidHoldReason(reason)}
+            dataTestId="application.put-on-hold"
+            onClick={() =>
+              hold.mutate(
+                { onHold: true, reason: reason.trim(), until: until ? `${until}T00:00:00Z` : null },
+                { onSuccess: () => setReason('') },
+              )
             }
           >
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                helperText="3 to 200 characters. Shown to the team while the hold is on."
-                sx={{ flex: { sm: 2 }, minWidth: 0 }}
-              />
-              <TextField
-                label="Hold until"
-                type="date"
-                value={until}
-                onChange={(e) => setUntil(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                helperText="Optional."
-                sx={{ flex: { sm: 1 }, minWidth: 0 }}
-              />
-            </Stack>
-          </StepRow>
-        )}
-      </CardContent>
-    </Card>
+            Put on hold
+          </AppButton>
+        </Stack>
+      )}
+    </Section>
   );
 }
 

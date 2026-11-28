@@ -421,6 +421,54 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await page.route('**/v1/products**', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
     });
+    // The loan-file page (2026-11-28) also reads the parties, collateral, status history and product version. Unmocked, they
+    // would reach the real API with the fake token, get 401 and sign the persona out.
+    const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    await page.route(`**/v1/applications/${APP_ID}/parties**`, async (route) => {
+      await route.fulfill(
+        json({
+          data: [
+            {
+              id: 'pty_qa_001',
+              customerId: 'cus_qa_001',
+              role: 'PRIMARY',
+              partyType: 'INDIVIDUAL',
+              relationshipToPrimary: null,
+              removedAt: null,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+          meta: { nextCursor: null, limit: 1 },
+        }),
+      );
+    });
+    await page.route(`**/v1/applications/${APP_ID}/collateral**`, async (route) => {
+      await route.fulfill(json({ data: [], meta: { nextCursor: null, limit: 20 } }));
+    });
+    await page.route(`**/v1/applications/${APP_ID}/status-history**`, async (route) => {
+      await route.fulfill(
+        json({
+          data: [
+            {
+              id: 'ash_qa_001',
+              fromStatus: null,
+              toStatus: 'DRAFT',
+              fromSubStatus: null,
+              toSubStatus: null,
+              transitionCode: 'CREATE',
+              reason: 'CONVERSION',
+              actorId: 'usr_rm_01',
+              causedByLenderCaseId: null,
+              occurredAt: new Date().toISOString(),
+            },
+          ],
+          meta: { nextCursor: null, limit: 200 },
+        }),
+      );
+    });
+    await page.route('**/v1/product-versions/**', async (route) => {
+      await route.fulfill(json({ id: 'pv_qa_001', productId: 'prd_qa_001', versionNo: 1 }));
+    });
   }
 
   // =========================================================================
@@ -492,13 +540,15 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     // 1-2. Open APP-QA-001 and review completeness
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Application Review', 'Checking APP-QA-001 is ready and its checklist complete');
-    await expect(page.getByRole('heading', { name: `Application ${APP_ID}` })).toBeVisible();
+    await expect(page.getByTestId('application.header')).toContainText('APP-QA_001');
     await expect(page.getByText('Ready for submission').first()).toBeVisible();
+    await casePage.openTab('documents');
     await expect(casePage.checklistCard).toContainText(
       'Every required document is accepted, waived or not applicable.',
     );
 
     // 3. The lender case carries the configured lender
+    await casePage.openTab('lenders');
     await expect(casePage.panel).toContainText(LENDER_NAME);
     await expect(casePage.statusChip('DRAFT')).toBeVisible();
 
@@ -544,8 +594,10 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Incomplete Case', 'One mandatory document is still outstanding');
+    await casePage.openTab('documents');
     await expect(casePage.checklistCard).toContainText('1 of 2 required documents still outstanding.');
 
+    await casePage.openTab('lenders');
     await casePage.click(casePage.buildPackageBtn, 1500);
     await expect(casePage.panel.getByRole('alert')).toContainText('Mandatory document INCOME_PROOF is not accepted.');
     await expect(casePage.statusChip('DRAFT')).toBeVisible();
@@ -575,6 +627,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Step-Up Gate', 'Submitting without a fresh TOTP code');
+    await casePage.openTab('lenders');
     await casePage.openSubmission('LND-QA-REF-002');
     await expect(authPage.stepUpDialog).toBeVisible();
 
@@ -641,6 +694,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Lender Query', 'Lender asks for an additional income document');
+    await casePage.openTab('lenders');
     await expect(casePage.statusChip('SUBMITTED')).toBeVisible();
     await casePage.raiseQuery('Please share an additional synthetic income proof (QA).');
     await expect(casePage.panel).toContainText('Query recorded successfully.');
@@ -707,6 +761,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     });
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
+    await casePage.openTab('lenders');
     await casePage.raiseQuery('Please share an additional synthetic income proof (QA).');
     await expect(casePage.statusChip('QUERY_RAISED')).toBeVisible();
 
