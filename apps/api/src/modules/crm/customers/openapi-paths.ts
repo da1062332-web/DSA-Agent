@@ -14,10 +14,20 @@ import {
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { registerOperation } from '../../../http/openapi-op';
 import { ContactPointCreate, CustomerMerge } from './customer-extras';
+import { CustomerSearchSchema } from './types';
 
 const tag = 'MOD-CUST Customers';
 
 export function registerPaths(registry: OpenAPIRegistry): void {
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/customers/search',
+    operationId: 'CUST-POST-CUSTOMERS-SEARCH',
+    summary:
+      'Find active customers by a 10-digit mobile (exact, keyed hash) or part of the name, inside the caller scope; masked results, no-store. The term is in the body so it never reaches a URL (customer.read)',
+    tag,
+    body: CustomerSearchSchema,
+  });
   registerOperation(registry, {
     method: 'post',
     path: '/v1/customers/:id/reveal',

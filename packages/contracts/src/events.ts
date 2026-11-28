@@ -38,6 +38,9 @@ export const DOMAIN_EVENT_TYPES = [
   'user.transfer_scheduled',
   'user.transferred',
   'integration.webhook_received',
+  // Added 2026-11-27 (P1-04, Dipanshu; Contracts §15): a lender policy version activated (maker-checker) or retired.
+  'lender_policy.activated',
+  'lender_policy.retired',
   // Added 2026-11-27 (P2-01; Contracts §15). MOD-SND has emitted these since migration 0031, but they were never
   // registered: the outbox relay casts rows to DomainEventEnvelope rather than parsing, so unregistered types were
   // delivered without complaint and no subscriber could name one in a type-safe comparison.

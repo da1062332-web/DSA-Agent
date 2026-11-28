@@ -1,6 +1,14 @@
 // OpenAPI registration for origination/catalogue (owner: Dev 3). Swagger groups: MOD-LND Lenders, MOD-PRD Products.
 // tools/gen-openapi.ts writes openapi/openapi.yaml.
-import { listResponse } from '@dsa/contracts';
+import {
+  LenderPolicyCreateSchema,
+  LenderPolicyListQuerySchema,
+  LenderPolicyListSchema,
+  LenderPolicyPatchSchema,
+  LenderPolicySchema,
+  LenderPolicyTransitionSchema,
+  listResponse,
+} from '@dsa/contracts';
 import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { registerOperation } from '../../../http/openapi-op';
 import { ReasonMapPut } from './reason-map';
@@ -337,6 +345,62 @@ function registerProductOpenApi(registry: OpenAPIRegistry): void {
     summary: 'Replace the lender reason map (config.manage; If-Match on the lender version)',
     tag: 'MOD-LND Lenders',
     body: ReasonMapPut,
+    ifMatch: true,
+  });
+  registerLenderPolicyOpenApi(registry);
+}
+
+/** P1-04 lender policy grid (owner: Dipanshu; migration M-120). */
+function registerLenderPolicyOpenApi(registry: OpenAPIRegistry): void {
+  const tag = 'MOD-LND Lenders';
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/lender-policies',
+    operationId: 'API-LND-POL-001',
+    summary: 'List lender policy versions (lender_policy.read); filters lenderId, productVersionId, status',
+    tag,
+    query: LenderPolicyListQuerySchema,
+    response: LenderPolicyListSchema,
+  });
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/lender-policies/:id',
+    operationId: 'API-LND-POL-002',
+    summary: 'One lender policy version (lender_policy.read)',
+    tag,
+    response: LenderPolicySchema,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/lender-policies',
+    operationId: 'API-LND-POL-003',
+    summary:
+      'Create a DRAFT policy version for a lender and one of its product versions (lender_policy.manage)',
+    tag,
+    body: LenderPolicyCreateSchema,
+    response: LenderPolicySchema,
+    status: 201,
+    idempotent: true,
+  });
+  registerOperation(registry, {
+    method: 'patch',
+    path: '/v1/lender-policies/:id',
+    operationId: 'API-LND-POL-004',
+    summary: 'Edit a DRAFT policy version; the caller becomes an editor (lender_policy.manage)',
+    tag,
+    body: LenderPolicyPatchSchema,
+    response: LenderPolicySchema,
+    ifMatch: true,
+  });
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/lender-policies/:id/transitions',
+    operationId: 'API-LND-POL-005',
+    summary:
+      'ACTIVATE a draft (rule.approve, step-up, SOD-01: not by an editor; retires the previous ACTIVE) or RETIRE an active version (lender_policy.manage)',
+    tag,
+    body: LenderPolicyTransitionSchema,
+    response: LenderPolicySchema,
     ifMatch: true,
   });
 }

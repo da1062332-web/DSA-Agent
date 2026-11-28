@@ -167,6 +167,16 @@ describe('F-08 direct URL access, by role', () => {
     expect(allowed('ROLE-BRANCH-MGR', '/users')).toBe(true);
     expect(allowed('ROLE-TEAM-MGR', '/users')).toBe(false);
   });
+
+  it('TEST-ACC-07b P1-04 a Lender policy manager (lender_policy.read, no lender.read) opens the lender page to activate a policy', () => {
+    // ROLE-POLICY-MGR grants after M-105 and M-120: the SOD-01 checker for lender policies.
+    const held = new Set(['lender_policy.read', 'lender_policy.manage', 'rule.approve', 'rule.author']);
+    const can = (code: string) => held.has(code);
+    expect(routeAllowed('/lenders', can, false)).toBe(true);
+    expect(routeAllowed('/lenders/lnd_1', can, false)).toBe(true);
+    expect(routeAllowed('/products', can, false)).toBe(false);
+    expect(routeAllowed('/applications/a1', can, false)).toBe(false);
+  });
 });
 
 describe('F-13 Access control follows the API (user.manage or role.manage)', () => {

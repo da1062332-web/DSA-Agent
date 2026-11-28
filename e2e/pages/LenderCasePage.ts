@@ -25,6 +25,11 @@ export class LenderCasePage extends BasePage {
   readonly responseTextInput = this.responseDialog.getByLabel(/Response Details/);
   readonly submitResponseBtn = this.responseDialog.getByRole('button', { name: 'Submit Response' });
 
+  /** The loan file shows one tab at a time (2026-11-28 redesign): open the tab that holds the card first. */
+  async openTab(tab: 'documents' | 'lenders'): Promise<void> {
+    await this.click(this.page.getByTestId(`application.tab-${tab}`), 600);
+  }
+
   /** The status chip in the panel's attempts table. */
   statusChip(status: string) {
     return this.panel.getByText(status, { exact: true });
