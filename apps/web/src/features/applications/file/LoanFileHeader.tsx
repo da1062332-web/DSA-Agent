@@ -39,7 +39,17 @@ function Fact({ label, children, testId }: { label: string; children: ReactNode;
   );
 }
 
-export function LoanFileHeader({ app, journey }: { app: Application; journey: JourneyState }) {
+export function LoanFileHeader({
+  app,
+  journey,
+  selectedStage,
+  onSelectStage,
+}: {
+  app: Application;
+  journey: JourneyState;
+  selectedStage?: number;
+  onSelectStage?: (index: number) => void;
+}) {
   const me = useMe();
   const version = useResource<ProductVersion & { productName?: string }>(
     app.productVersionId ? `/v1/product-versions/${app.productVersionId}` : null,
@@ -177,7 +187,7 @@ export function LoanFileHeader({ app, journey }: { app: Application; journey: Jo
       </Box>
       <Divider />
       <Box sx={{ px: { xs: 1, md: 3 }, py: 2 }}>
-        <JourneyStepper state={journey} />
+        <JourneyStepper state={journey} selected={selectedStage} onSelect={onSelectStage} />
       </Box>
     </Box>
   );

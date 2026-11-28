@@ -143,6 +143,8 @@ export const ID_PREFIXES = [
   'crp',
   // P1-03 (migration 0111): application collateral.
   'acol',
+  // P1-07 (migration 0140): a lender's saved MIS sheet mapping.
+  'mism',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 

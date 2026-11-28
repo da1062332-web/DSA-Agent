@@ -558,13 +558,13 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await casePage.showBanner('Application Review', 'Checking APP-QA-001 is ready and its checklist complete');
     await expect(page.getByTestId('application.header')).toContainText('APP-QA_001');
     await expect(page.getByText('Ready for submission').first()).toBeVisible();
-    await casePage.openTab('documents');
+    await casePage.openStage('documents');
     await expect(casePage.checklistCard).toContainText(
       'Every required document is accepted, waived or not applicable.',
     );
 
     // 3. The lender case carries the configured lender
-    await casePage.openTab('lenders');
+    await casePage.openStage('ready');
     await expect(casePage.panel).toContainText(LENDER_NAME);
     await expect(casePage.statusChip('DRAFT')).toBeVisible();
 
@@ -626,10 +626,10 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Incomplete Case', 'One mandatory document is still outstanding');
-    await casePage.openTab('documents');
+    await casePage.openStage('documents');
     await expect(casePage.checklistCard).toContainText('1 of 2 required documents still outstanding.');
 
-    await casePage.openTab('lenders');
+    await casePage.openStage('ready');
     await casePage.click(casePage.buildPackageBtn, 1500);
     await expect(casePage.panel.getByRole('alert')).toContainText(
       'Mandatory document INCOME_PROOF is not accepted. Still open: Income proof (waiting for the customer).',
@@ -664,7 +664,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await allowStepUp(page);
     await casePage.showBanner('Step-Up Gate', 'Submitting without a fresh TOTP code');
-    await casePage.openTab('lenders');
+    await casePage.openStage('ready');
     await casePage.openSubmission('LND-QA-REF-002');
     await expect(authPage.stepUpDialog).toBeVisible();
 
@@ -731,7 +731,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Lender Query', 'Lender asks for an additional income document');
-    await casePage.openTab('lenders');
+    await casePage.openStage('ready');
     await expect(casePage.statusChip('SUBMITTED')).toBeVisible();
     await casePage.raiseQuery('Please share an additional synthetic income proof (QA).');
     await expect(casePage.panel).toContainText('Query recorded successfully.');
@@ -809,7 +809,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     });
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
-    await casePage.openTab('lenders');
+    await casePage.openStage('ready');
     await casePage.raiseQuery('Please share an additional synthetic income proof (QA).');
     await expect(casePage.statusChip('QUERY_RAISED')).toBeVisible();
 

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   JOURNEY,
   applicationNumber,
-  asFileTab,
   formatInr,
   journeyState,
   loanToValue,
@@ -74,10 +73,7 @@ describe('TEST-WEB-FILE figures', () => {
     expect(loanToValue('3750000.00', [])).toBeNull();
   });
 
-  it('TEST-WEB-FILE-07 an unknown tab opens the overview; history lines read as moves', () => {
-    expect(asFileTab('documents')).toBe('documents');
-    expect(asFileTab('nope')).toBe('overview');
-    expect(asFileTab(null)).toBe('overview');
+  it('TEST-WEB-FILE-07 history lines read as moves', () => {
     const labels = { DRAFT: 'Draft', DOCUMENTS_PENDING: 'Documents pending' };
     expect(transitionLabel(null, 'DRAFT', labels)).toBe('Opened as Draft');
     expect(transitionLabel('DRAFT', 'DOCUMENTS_PENDING', labels)).toBe('Draft → Documents pending');
