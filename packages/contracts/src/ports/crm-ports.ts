@@ -25,6 +25,30 @@ export interface PartyPort {
   getParty(tx: Tx, customerId: string): Promise<Party | null>;
 }
 
+/**
+ * What a lender looks at for one borrower, from the customer profile (P1-02), for eligibility and lender matching. Added 2026-11-28
+ * (Contracts §15, additive; owner Bhushan, customers lane). Never a PAN or a date of birth: only the birth year, from which the age
+ * is worked out. Money is { amount, currency }. A customer with no profile comes back with every figure null.
+ */
+export interface BorrowerFinancials {
+  customerId: string;
+  partyType: 'INDIVIDUAL' | 'ENTITY';
+  monthlyIncome: { amount: string; currency: string } | null;
+  /** Existing EMIs and other fixed monthly payments. */
+  monthlyObligations: { amount: string; currency: string } | null;
+  employmentType: string | null;
+  constitution: string | null;
+  vintageMonths: number | null;
+  birthYear: number | null;
+  /** The live CURRENT address's pincode, else OFFICE, else PERMANENT. */
+  pincode: string | null;
+}
+
+export interface BorrowerFinancialsPort {
+  /** One entry per known customer of the tenant, in no particular order; unknown ids are left out. */
+  getFinancials(tx: Tx, customerIds: readonly string[]): Promise<BorrowerFinancials[]>;
+}
+
 export interface DataSharingRecordInput {
   subjectType: 'LOAN_APPLICATION';
   subjectId: string;

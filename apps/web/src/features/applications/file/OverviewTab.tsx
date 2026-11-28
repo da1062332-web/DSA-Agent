@@ -1,7 +1,10 @@
 // The overview of a loan file (owner: Bhushan, 2026-11-28 redesign): the borrowers, the loan, the security, the documents and the
 // eligibility on one screen, each with a link to the tab that holds the detail, and the status journey below. Read-only; changes
 // happen on the tabs. Every figure comes from an existing endpoint; a section the caller may not read says so instead of failing.
-import type { CollateralView, CustomerProfileView } from '@dsa/contracts';
+import type { CollateralView, CustomerProfileView, LenderMatchRun } from '@dsa/contracts';
+import { useQuery } from '@tanstack/react-query';
+import { ApiError, apiFetch } from '../../../api/client';
+import { hasPermission, useMe } from '../../../api/useMe';
 import { Box, Chip, LinearProgress, Link, Stack, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
 import { CustomerName } from '../../../shell/display';
@@ -187,6 +190,21 @@ export function OverviewTab({
   const eligibility = useResource<EligibilityLatest>(
     `/v1/applications/${app.id}/eligibility-assessments/latest`,
   );
+  // The lender-wise answer (lender matching) is what a DSA quotes; the rule-set check is the fallback.
+  const me = useMe();
+  const canMatch = hasPermission(me.data, 'lender_match.run');
+  const matchBase = `/v1/applications/${app.id}/lender-matches`;
+  const match = useQuery({
+    queryKey: [matchBase, 'latest'],
+    queryFn: () =>
+      apiFetch<LenderMatchRun>(`${matchBase}/latest`).catch((e: unknown) => {
+        if (e instanceof ApiError && e.httpStatus === 404) return null;
+        throw e;
+      }),
+    enabled: canMatch,
+  });
+  const eligibleLenders = (match.data?.results ?? []).filter((r) => r.outcome === 'ELIGIBLE');
+  const best = eligibleLenders[0];
 
   const live = (parties.data ?? []).filter((p) => p.removedAt === null);
   const ordered = [...live].sort((a, b) => (a.role === 'PRIMARY' ? -1 : b.role === 'PRIMARY' ? 1 : 0));
@@ -307,11 +325,33 @@ export function OverviewTab({
           action={<OpenTab tab="eligibility" label="Details" onOpen={onOpen} />}
           testId="application.overview-eligibility"
         >
-          {!latest ? (
+          {match.data ? (
+            <Box data-testid="application.overview-lender-eligibility">
+              <Typography sx={{ fontSize: 22, fontWeight: 700 }}>
+                {best?.eligibleAmount ? `Up to ${formatInr(best.eligibleAmount.amount)}` : 'No lender yet'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" component="div">
+                {eligibleLenders.length} of {match.data.policyCount} lenders eligible
+                {best ? ` · best: ${best.lenderName}` : ''}
+              </Typography>
+              {best?.emiMin && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  EMI from <b>{formatInr(best.emiMin.amount)}</b>
+                  {best.foirBps !== null ? ` · FOIR ${(best.foirBps / 100).toFixed(1)}%` : ''}
+                </Typography>
+              )}
+              <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1 }}>
+                Worked out {fileDate(match.data.evaluatedAt)}. Indicative: the lender makes the credit
+                decision.
+              </Typography>
+            </Box>
+          ) : !latest ? (
             <Typography variant="body2" color="text.secondary">
-              {app.productVersionId
-                ? 'Not checked yet.'
-                : 'Choose a product to check eligibility against its rules.'}
+              {canMatch
+                ? 'Not worked out yet. Open the details to see which lenders will take this file.'
+                : app.productVersionId
+                  ? 'Not checked yet.'
+                  : 'Choose a product to check eligibility against its rules.'}
             </Typography>
           ) : (
             <>

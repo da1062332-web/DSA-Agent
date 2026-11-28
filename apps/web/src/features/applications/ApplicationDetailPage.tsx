@@ -30,7 +30,6 @@ import { ChecklistCard } from '../documents/ChecklistCard';
 import { OwnersCard } from './ApplicationFileCards';
 import { CollateralCard } from './CollateralCard';
 import { StatusLinkCard } from './StatusLinkCard';
-import { EligibilityCard } from './EligibilityCard';
 
 import { UserName } from '../../shell/display';
 import { AppButton, FieldGrid } from '../../ui';
@@ -46,7 +45,7 @@ import { ApplicantsTab } from './file/ApplicantsTab';
 import { LoanFileHeader } from './file/LoanFileHeader';
 import { OverviewTab, Section } from './file/OverviewTab';
 import { StatusTimeline, type StatusHistoryEntry } from './file/StatusTimeline';
-import { LenderMatchesCard } from './LenderMatchesCard';
+import { EligibilityTab } from './file/EligibilityTab';
 import {
   CLOSABLE,
   STATUS_LABELS,
@@ -158,20 +157,16 @@ export function ApplicationDetailPage() {
             </>
           )}
           {tab === 'documents' && <ChecklistCard applicationId={a.id} />}
-          {tab === 'eligibility' && (
-            <EligibilityCard
-              applicationId={a.id}
-              applicationStatus={a.status}
-              hasProduct={!!a.productVersionId}
-              autoRun
-              productVersionId={a.productVersionId}
-              updatedAt={a.updatedAt}
-              status={a.status}
-            />
-          )}
+          {tab === 'eligibility' && <EligibilityTab app={a} />}
           {tab === 'lenders' && (
             <>
-              <LenderMatchesCard applicationId={a.id} productCategory={a.productCategory} />
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Which lenders will take this file, and for how much, is worked out on the{' '}
+                <Link component="button" type="button" underline="hover" onClick={() => open('eligibility')}>
+                  Eligibility tab
+                </Link>
+                .
+              </Typography>
               <div data-slot="application.lender-cases">
                 <LenderCasePanel applicationId={a.id} />
               </div>

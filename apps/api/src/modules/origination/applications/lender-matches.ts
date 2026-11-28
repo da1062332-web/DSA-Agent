@@ -6,6 +6,9 @@
 //   POST /v1/emi-calculations                          lender_match.run or lender_policy.read   stateless EMI calculator
 // Inputs are prefilled from the application (amount, tenure, applicant type) and applicant_financial_input (verified income,
 // else declared income; the credit score while its report is recent). The request body overrides any field for this run.
+// 2026-11-28 (Bhushan), the way a DSA works a file out: the earning co-applicants' monthly income is clubbed with the borrower's,
+// everyone's existing EMIs are counted (a guarantor's are shown, not counted), and the age, pincode, constitution and vintage come
+// from the borrower's customer profile (BorrowerFinancialsPort), the property value from the file's live collateral.
 // The policies come from origination/catalogue through LenderPolicyPort, never from its tables. The engine reads ctx.now,
 // never the clock. A run is insert-only history; it is audited with its hash and counts, never the values (personal data).
 import {
@@ -15,6 +18,8 @@ import {
   LenderMatchRunRequestSchema,
   moneyToPaise,
   paiseToMoney,
+  type BorrowerFinancials,
+  type BorrowerIncomeLine,
   type EmiCalculation,
   type LenderMatchField,
   type LenderMatchInputSource,
@@ -36,7 +41,7 @@ import { idempotencyKey, requireCtx } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { iso, type Row } from './db';
 import { loadScopedApplication, readApplicantInputs } from './eligibility-inputs';
-import { creditReportUsable } from './eligibility-rules';
+import { businessDate, creditReportUsable } from './eligibility-rules';
 
 const RUN = 'lender_match.run' as const;
 
@@ -57,14 +62,29 @@ const EMPTY_INPUTS: LenderMatchInputValues = {
 const inr = (v: unknown) => ({ amount: String(v), currency: 'INR' });
 const present = (v: unknown) => v !== null && v !== undefined;
 
-/** What the application and its recorded figures say, with the source of each known value. */
+/** Age in years from the birth year, on the business date. It can read one year high before the birthday, which errs toward
+ *  the stricter answer on an age-at-maturity cap. */
+export const ageFromBirthYear = (birthYear: number, now: Date): number =>
+  Number(businessDate(now).slice(0, 4)) - birthYear;
+
+const sumPaise = (values: readonly ({ amount: string } | null)[]): number | null => {
+  const known = values.filter((v): v is { amount: string } => v !== null);
+  return known.length === 0
+    ? null
+    : known.reduce((s, v) => s + moneyToPaise({ amount: v.amount, currency: 'INR' }), 0);
+};
+
+/** What the application, its recorded figures, its borrowers' profiles and its collateral say, with the source of each value. */
 export async function prefillInputs(
   tx: Tx,
   ctx: RequestContext,
   app: Row,
+  deps?: Pick<ApiDeps, 'borrowerFinancialsPort'>,
 ): Promise<{
   inputs: LenderMatchInputValues;
   sources: Record<LenderMatchField, LenderMatchInputSource | null>;
+  borrowers: BorrowerIncomeLine[];
+  collateralItems: number;
 }> {
   const inputs: LenderMatchInputValues = { ...EMPTY_INPUTS };
   const sources = Object.fromEntries(LENDER_MATCH_FIELDS.map((f) => [f, null])) as Record<
@@ -86,20 +106,98 @@ export async function prefillInputs(
     set('employmentType', app.applicant_type as LenderMatchInputValues['employmentType'], 'APPLICATION');
 
   const fin = await readApplicantInputs(tx, String(app.id));
-  if (fin) {
-    const income = present(fin.verified_monthly_income_amount)
+  const recordedIncome = fin
+    ? present(fin.verified_monthly_income_amount)
       ? fin.verified_monthly_income_amount
-      : fin.declared_monthly_income_amount;
-    if (present(income)) set('monthlyIncome', inr(income), 'FINANCIAL_INPUT');
-    if (
-      present(fin.credit_score) &&
-      present(fin.credit_report_date) &&
-      creditReportUsable(String(fin.credit_report_date), ctx.now)
-    ) {
-      set('bureauScore', Number(fin.credit_score), 'FINANCIAL_INPUT');
-    }
+      : fin.declared_monthly_income_amount
+    : null;
+  if (
+    fin &&
+    present(fin.credit_score) &&
+    present(fin.credit_report_date) &&
+    creditReportUsable(String(fin.credit_report_date), ctx.now)
+  ) {
+    set('bureauScore', Number(fin.credit_score), 'FINANCIAL_INPUT');
   }
-  return { inputs, sources };
+
+  // The borrowers on the file and what their profiles say.
+  const parties = (
+    await sql<Row>`
+      select customer_id, role, relationship_to_primary from application_party
+       where application_id = ${String(app.id)} and removed_at is null
+       order by case role when 'PRIMARY' then 1 when 'CO_APPLICANT' then 2 else 3 end, created_at`.execute(tx)
+  ).rows;
+  const profiles = new Map<string, BorrowerFinancials>();
+  if (deps?.borrowerFinancialsPort && parties.length > 0) {
+    const list = await deps.borrowerFinancialsPort.getFinancials(
+      tx,
+      parties.map((p) => String(p.customer_id)),
+    );
+    for (const f of list) profiles.set(f.customerId, f);
+  }
+
+  const borrowers: BorrowerIncomeLine[] = parties.map((p) => {
+    const role = p.role as BorrowerIncomeLine['role'];
+    const profile = profiles.get(String(p.customer_id));
+    // The borrower's own figure on the application (verified, else declared) wins over the profile.
+    const fromApplication = role === 'PRIMARY' && present(recordedIncome);
+    const income = fromApplication
+      ? inr(Number(recordedIncome).toFixed(2))
+      : (profile?.monthlyIncome ?? null);
+    return {
+      customerId: String(p.customer_id),
+      role,
+      relationshipToPrimary: (p.relationship_to_primary as string | null) ?? null,
+      monthlyIncome: income,
+      incomeSource: fromApplication ? 'FINANCIAL_INPUT' : income ? 'CUSTOMER_PROFILE' : null,
+      monthlyObligations: profile?.monthlyObligations ?? null,
+      counted: role !== 'GUARANTOR',
+    };
+  });
+  const counted = borrowers.filter((b) => b.counted);
+  const coIncome = counted.some((b) => b.role === 'CO_APPLICANT' && b.monthlyIncome !== null);
+  const coObligations = counted.some((b) => b.role === 'CO_APPLICANT' && b.monthlyObligations !== null);
+
+  const incomePaise = sumPaise(counted.map((b) => b.monthlyIncome));
+  if (incomePaise !== null) {
+    const primarySource = counted.find((b) => b.role === 'PRIMARY')?.incomeSource ?? 'CUSTOMER_PROFILE';
+    set('monthlyIncome', paiseToMoney(incomePaise), coIncome ? 'CO_APPLICANTS' : primarySource);
+  } else if (present(recordedIncome)) {
+    // No party rows (a file from before parties were recorded): the application's own figure.
+    set('monthlyIncome', inr(Number(recordedIncome).toFixed(2)), 'FINANCIAL_INPUT');
+  }
+  const obligationsPaise = sumPaise(counted.map((b) => b.monthlyObligations));
+  if (obligationsPaise !== null) {
+    set(
+      'monthlyObligations',
+      paiseToMoney(obligationsPaise),
+      coObligations ? 'CO_APPLICANTS' : 'CUSTOMER_PROFILE',
+    );
+  }
+
+  // Age, pincode, constitution and vintage are the borrower's (the primary applicant).
+  const primaryParty = parties.find((p) => p.role === 'PRIMARY');
+  const primary = primaryParty ? profiles.get(String(primaryParty.customer_id)) : undefined;
+  if (primary) {
+    if (primary.birthYear !== null)
+      set('ageYears', ageFromBirthYear(primary.birthYear, ctx.now), 'CUSTOMER_PROFILE');
+    if (primary.pincode !== null) set('pincode', primary.pincode, 'CUSTOMER_PROFILE');
+    if (primary.constitution !== null)
+      set('constitution', primary.constitution as LenderMatchInputValues['constitution'], 'CUSTOMER_PROFILE');
+    if (primary.vintageMonths !== null) set('vintageMonths', primary.vintageMonths, 'CUSTOMER_PROFILE');
+  }
+
+  // The property pledged on the file (P1-03), for the LTV cap.
+  const collateral = (
+    await sql<{ n: number; paise: string | null }>`
+      select count(*)::int as n, sum(estimated_market_value_paise)::text as paise from application_collateral
+       where application_id = ${String(app.id)} and removed_at is null`.execute(tx)
+  ).rows[0];
+  if (collateral && collateral.n > 0 && collateral.paise !== null) {
+    set('collateralValue', paiseToMoney(Number(collateral.paise)), 'COLLATERAL');
+  }
+
+  return { inputs, sources, borrowers, collateralItems: collateral?.n ?? 0 };
 }
 
 /** The wire inputs as bre-core inputs (integer paise). */
@@ -210,8 +308,8 @@ export function registerLenderMatchRoutes(router: Router, deps: ApiDeps): void {
     deps.authz.requirePermission(ctx, RUN);
     const body = await deps.txRunner.withTenantTx(ctx, async (tx): Promise<LenderMatchPrefill> => {
       const app = await loadScopedApplication(tx, ctx, RUN, String(req.params.id));
-      const { inputs, sources } = await prefillInputs(tx, ctx, app);
-      return { applicationId: String(app.id), inputs, sources };
+      const { inputs, sources, borrowers, collateralItems } = await prefillInputs(tx, ctx, app, deps);
+      return { applicationId: String(app.id), inputs, sources, borrowers, collateralItems };
     });
     res.status(200).json(body);
   });
@@ -231,7 +329,7 @@ export function registerLenderMatchRoutes(router: Router, deps: ApiDeps): void {
         { key, method: 'POST', path: `/v1/applications/${applicationId}/lender-matches`, body: overrides },
         async () => {
           const app = await loadScopedApplication(tx, ctx, RUN, applicationId);
-          const { inputs: prefilled } = await prefillInputs(tx, ctx, app);
+          const { inputs: prefilled } = await prefillInputs(tx, ctx, app, deps);
           const inputs: LenderMatchInputValues = { ...prefilled, ...overrides };
           const policies = await port.matchablePolicies(tx, String(app.product_category), ctx.now);
           const results = rankMatches(inputs, policies, ctx.now);

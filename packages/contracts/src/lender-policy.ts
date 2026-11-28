@@ -63,7 +63,16 @@ export const LENDER_MATCH_LIMITS = ['REQUESTED', 'PRODUCT_MAX', 'FOIR', 'LTV'] a
 export type LenderMatchLimitCode = (typeof LENDER_MATCH_LIMITS)[number];
 
 /** Where a prefilled input came from: the application row, applicant_financial_input, or typed for this run. */
-export const LENDER_MATCH_INPUT_SOURCES = ['APPLICATION', 'FINANCIAL_INPUT', 'ENTERED'] as const;
+export const LENDER_MATCH_INPUT_SOURCES = [
+  'APPLICATION',
+  'FINANCIAL_INPUT',
+  'ENTERED',
+  // Added 2026-11-28 (Bhushan; Contracts §15, additive): the borrower's customer profile, the borrower plus earning co-applicants
+  // (income clubbed the way lenders do), and the property pledged on the file.
+  'CUSTOMER_PROFILE',
+  'CO_APPLICANTS',
+  'COLLATERAL',
+] as const;
 export type LenderMatchInputSource = (typeof LENDER_MATCH_INPUT_SOURCES)[number];
 
 // ---- Money helpers ------------------------------------------------------------------------------------------------------------
@@ -238,11 +247,31 @@ export type LenderMatchInputValues = z.infer<typeof LenderMatchInputsSchema>;
 export const LenderMatchRunRequestSchema = z.object(InputsShape).partial().strict();
 export type LenderMatchRunRequest = z.infer<typeof LenderMatchRunRequestSchema>;
 
+/**
+ * One borrower's line in the income working (2026-11-28). Lenders club the income of the borrower and the earning co-applicants and
+ * count everyone's existing EMIs; a guarantor's income and EMIs are shown but not counted.
+ */
+export const BorrowerIncomeLineSchema = z.object({
+  customerId: z.string(),
+  role: z.enum(['PRIMARY', 'CO_APPLICANT', 'GUARANTOR']),
+  relationshipToPrimary: z.string().nullable(),
+  monthlyIncome: MoneySchema.nullable(),
+  /** Where the income figure is from: the application's verified or declared figure, or the customer profile. */
+  incomeSource: z.enum(['FINANCIAL_INPUT', 'CUSTOMER_PROFILE']).nullable(),
+  monthlyObligations: MoneySchema.nullable(),
+  counted: z.boolean(),
+});
+export type BorrowerIncomeLine = z.infer<typeof BorrowerIncomeLineSchema>;
+
 /** GET /v1/applications/{id}/lender-matches/inputs — what a run would use now, and where each value comes from. */
 export const LenderMatchPrefillSchema = z.object({
   applicationId: IdSchema('app'),
   inputs: LenderMatchInputsSchema,
   sources: z.record(z.enum(LENDER_MATCH_FIELDS), z.enum(LENDER_MATCH_INPUT_SOURCES).nullable()),
+  /** The working behind monthlyIncome and monthlyObligations, one line per borrower on the file (2026-11-28). */
+  borrowers: z.array(BorrowerIncomeLineSchema).optional(),
+  /** How many live properties make up collateralValue. */
+  collateralItems: z.number().int().min(0).optional(),
 });
 export type LenderMatchPrefill = z.infer<typeof LenderMatchPrefillSchema>;
 

@@ -126,6 +126,21 @@ export const CustomerListQuerySchema = z.object({
 });
 export type CustomerListQuery = z.infer<typeof CustomerListQuerySchema>;
 
+/**
+ * POST /v1/customers/search (owner: Bhushan, 2026-11-28). The term is in the body, not the URL, so a mobile number never lands in a
+ * browser history or a proxy log. A mobile (10 digits from 6-9, optionally with 0, 91 or +91) matches exactly through the keyed hash;
+ * anything else is a name, at least 2 characters, matched anywhere in the name. Customers already on a file can be left out.
+ */
+export const CustomerSearchSchema = z
+  .object({
+    query: z.string().trim().min(2).max(100),
+    partyType: PartyTypeEnum.optional(),
+    excludeIds: z.array(z.string().min(3).max(64)).max(50).optional(),
+    limit: z.number().int().min(1).max(50).default(20),
+  })
+  .strict();
+export type CustomerSearchInput = z.infer<typeof CustomerSearchSchema>;
+
 /** Masked representation of Customer */
 export interface MaskedCustomerResource {
   id: string;

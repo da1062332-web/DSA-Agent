@@ -26502,6 +26502,9 @@ paths:
                           - APPLICATION
                           - FINANCIAL_INPUT
                           - ENTERED
+                          - CUSTOMER_PROFILE
+                          - CO_APPLICANTS
+                          - COLLATERAL
                       tenureMonths: *a108
                       monthlyIncome: *a108
                       monthlyObligations: *a108
@@ -26512,6 +26515,71 @@ paths:
                       employmentType: *a108
                       constitution: *a108
                       vintageMonths: *a108
+                  borrowers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        customerId:
+                          type: string
+                        role:
+                          type: string
+                          enum:
+                            - PRIMARY
+                            - CO_APPLICANT
+                            - GUARANTOR
+                        relationshipToPrimary:
+                          type:
+                            - string
+                            - "null"
+                        monthlyIncome:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        incomeSource:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - FINANCIAL_INPUT
+                            - CUSTOMER_PROFILE
+                        monthlyObligations:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        counted:
+                          type: boolean
+                      required:
+                        - customerId
+                        - role
+                        - relationshipToPrimary
+                        - monthlyIncome
+                        - incomeSource
+                        - monthlyObligations
+                        - counted
+                  collateralItems:
+                    type: integer
+                    minimum: 0
                 required:
                   - applicationId
                   - inputs
@@ -46697,6 +46765,259 @@ paths:
       summary: GET /v1/timeline
       tags:
         - MOD-ACT Activities
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/customers/search:
+    post:
+      operationId: CUST-POST-CUSTOMERS-SEARCH
+      summary: Find active customers by a 10-digit mobile (exact, keyed hash) or part of the name, inside the caller scope; masked results, no-store. The term is in the body so it never reaches a URL (customer.read)
+      tags:
+        - MOD-CUST Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                partyType:
+                  type: string
+                  enum: *a44
+                excludeIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 3
+                    maxLength: 64
+                  maxItems: 50
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 20
+              required:
+                - query
+              additionalProperties: false
       responses:
         "200":
           description: Success

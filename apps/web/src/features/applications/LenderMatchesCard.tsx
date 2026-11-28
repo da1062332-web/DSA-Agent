@@ -18,7 +18,12 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import type { LenderMatchPrefill, LenderMatchResultView, LenderMatchRun } from '@dsa/contracts';
+import type {
+  LenderMatchInputSource,
+  LenderMatchPrefill,
+  LenderMatchResultView,
+  LenderMatchRun,
+} from '@dsa/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError, apiFetch, errorText, newIdempotencyKey } from '../../api/client';
@@ -45,10 +50,14 @@ const OUTCOME = {
   NOT_ELIGIBLE: { label: 'Not eligible', color: 'default' },
 } as const;
 
-const SOURCE_TEXT = {
+const SOURCE_TEXT: Record<LenderMatchInputSource, string> = {
   APPLICATION: 'from the application',
   FINANCIAL_INPUT: 'from the recorded figures',
   ENTERED: 'entered',
+  // 2026-11-28: the borrower's profile, the borrower plus earning co-applicants (clubbed), and the property on the file.
+  CUSTOMER_PROFILE: "from the borrower's profile",
+  CO_APPLICANTS: 'borrower and co-applicants together',
+  COLLATERAL: 'from the property collateral',
 };
 
 export function LenderMatchesCard({
