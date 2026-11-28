@@ -1261,6 +1261,7 @@ components:
             - SHARE_WITH_LENDER
             - VERIFICATION_CHECK
             - MARKETING
+            - BUREAU_PULL
         purposeTarget:
           type: string
         noticeVersion:
@@ -32291,9 +32292,12 @@ paths:
                     type: string
                   expiresAt:
                     type: string
+                  reference:
+                    type: string
                 required:
                   - url
                   - expiresAt
+                  - reference
         "403":
           description: FORBIDDEN
         "404":
@@ -32312,6 +32316,19 @@ paths:
               schema:
                 type: object
                 properties:
+                  application:
+                    type: object
+                    properties:
+                      reference:
+                        type: string
+                      loanType:
+                        type: string
+                      appliedOn:
+                        type: string
+                    required:
+                      - reference
+                      - loanType
+                      - appliedOn
                   stage:
                     type: string
                   progress:
@@ -32334,12 +32351,28 @@ paths:
                   pendingDocuments:
                     type: array
                     items:
-                      type: string
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        status:
+                          type: string
+                          enum:
+                            - PENDING
+                            - REJECTED
+                            - EXPIRED
+                        label:
+                          type: string
+                      required:
+                        - name
+                        - status
+                        - label
                   lastUpdated:
                     type: string
                   expiresAt:
                     type: string
                 required:
+                  - application
                   - stage
                   - progress
                   - pendingDocuments

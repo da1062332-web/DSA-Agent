@@ -1,5 +1,5 @@
 // apps/api/src/modules/crm/customers/types.ts — owner: Dev 5 (MOD-CUST)
-import type { ConsentPurpose } from '@dsa/contracts';
+import { CREDIT_BUREAUS, type ConsentPurpose } from '@dsa/contracts';
 import { z } from 'zod';
 
 export const PartyTypeEnum = z.enum(['INDIVIDUAL', 'ENTITY']);
@@ -31,6 +31,8 @@ export const ConsentPurposeEnum = z.enum([
   'SHARE_WITH_LENDER',
   'VERIFICATION_CHECK',
   'MARKETING',
+  // P1-05 (guest work in the customers lane, review: Bhushan). Consent to pull a credit-bureau report; the target is the bureau.
+  'BUREAU_PULL',
 ]);
 
 export const ConsentStatusEnum = z.enum(['ACTIVE', 'WITHDRAWN', 'EXPIRED']);
@@ -102,6 +104,17 @@ export const CreateConsentSchema = z
     },
     {
       message: 'purposeTarget is required when purpose is SHARE_WITH_LENDER or VERIFICATION_CHECK',
+      path: ['purposeTarget'],
+    },
+  )
+  // P1-05: a BUREAU_PULL consent is for ONE bureau, named by the target. The message is fixed text: the rejected value is never echoed.
+  .refine(
+    (data) =>
+      data.purpose !== 'BUREAU_PULL' ||
+      (data.purposeTarget !== undefined &&
+        (CREDIT_BUREAUS as readonly string[]).includes(data.purposeTarget)),
+    {
+      message: `purposeTarget must be one of the credit bureaus (${CREDIT_BUREAUS.join(', ')}) when purpose is BUREAU_PULL`,
       path: ['purposeTarget'],
     },
   );
