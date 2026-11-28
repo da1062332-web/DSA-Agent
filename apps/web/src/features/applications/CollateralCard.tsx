@@ -81,11 +81,23 @@ export function CollateralCard({ app }: { app: Application }) {
     setForm(EMPTY_COLLATERAL);
     setEditing(null);
   };
+  // A refused edit (most often 409: someone else changed the item) leaves this screen holding an old version, and every retry
+  // would be refused again. Reload the list and refill the form from the item as it is now, so the next save sends its current
+  // version; the error stays on screen until then. An item removed meanwhile closes the form.
+  const reloadAfterRefusedEdit = async (id: string) => {
+    const fresh = (await items.refetch()).data?.find((c) => c.id === id);
+    if (fresh) {
+      setEditing(fresh);
+      setForm(fromItem(fresh));
+    } else reset();
+  };
   const save = () => {
     if (problem) return;
     const body = toCollateralBody(form);
-    if (editing) edit.mutate(body, { onSuccess: reset });
-    else add.mutate(body, { onSuccess: reset });
+    if (editing) {
+      const id = editing.id;
+      edit.mutate(body, { onSuccess: reset, onError: () => void reloadAfterRefusedEdit(id) });
+    } else add.mutate(body, { onSuccess: reset });
   };
   const data = items.data ?? [];
 
@@ -287,7 +299,16 @@ export function CollateralCard({ app }: { app: Application }) {
           severity="error"
           isLoading={remove.isPending}
           onClose={() => setRemoving(null)}
-          onConfirm={() => remove.mutate(undefined, { onSuccess: () => setRemoving(null) })}
+          onConfirm={() =>
+            remove.mutate(undefined, {
+              onSuccess: () => setRemoving(null),
+              // Refused (for example a newer version): close the dialog and reload, so a second try sends the current version.
+              onError: () => {
+                setRemoving(null);
+                void items.refetch();
+              },
+            })
+          }
           dataTestId="application.collateral-remove-dialog"
           confirmTestId="application.collateral-remove-confirm"
         />

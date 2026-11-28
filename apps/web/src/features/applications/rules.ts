@@ -1,5 +1,6 @@
 // Application screen rules (owner: Dev 3; DSA Notion MODULE 16). These mirror the API so the screen only offers actions the
 // API accepts. The API stays the authority: it re-checks every rule and returns 409 when a rule no longer holds.
+import { freeTextNoS3 } from '@dsa/contracts';
 
 export type ApplicationStatus =
   | 'DRAFT'
@@ -98,10 +99,7 @@ export const isValidAssignmentReason = (reason: string) => {
 };
 
 /** Free text must not carry a PAN, an Aadhaar number or an account number (the API refuses them with 422). */
-export const hasRestrictedNumber = (text: string) =>
-  /\b[A-Z]{5}[0-9]{4}[A-Z]\b/i.test(text) ||
-  /\b\d{4}\s?\d{4}\s?\d{4}\b/.test(text) ||
-  /\b\d{9,18}\b/.test(text);
+export const hasRestrictedNumber = (text: string) => freeTextNoS3(text);
 
 // ---- New application (API-APP-001) ----
 export const PRODUCT_CATEGORIES = ['PL', 'BL', 'MSME', 'LAP', 'HL', 'VL', 'GL', 'EL', 'OTHER'] as const;
