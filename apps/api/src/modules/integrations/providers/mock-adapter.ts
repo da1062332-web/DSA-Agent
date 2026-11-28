@@ -3,6 +3,7 @@
 
 import type { AdapterResult, HealthCheckResult, IntegrationEnvironment } from '@dsa/contracts';
 import type { BaseAdapter } from '../adapter';
+import type { BureauPullOutput } from './bureau-adapter';
 import type { ResolvedCredentials } from '../vault-port';
 
 export interface MockConfig {
@@ -20,6 +21,7 @@ export class MockTestAdapter implements BaseAdapter<MockConfig> {
     'VERIFICATION.PAN',
     'VERIFICATION.GST',
     'VERIFICATION.BANK',
+    'BUREAU.SOFT_PULL',
     'STORAGE.DOC_SCAN',
   ] as const;
   readonly supportedEnvironments: readonly IntegrationEnvironment[] = ['SANDBOX', 'PRODUCTION'];
@@ -91,6 +93,35 @@ export class MockTestAdapter implements BaseAdapter<MockConfig> {
           environment: 'SANDBOX',
           durationMs: latency,
           httpStatus: 429,
+        },
+      };
+    }
+
+    // A simulated bureau report. It never echoes the input: the input of this capability is a PAN and a date of birth.
+    if (capability === 'BUREAU.SOFT_PULL') {
+      const simulated: BureauPullOutput = {
+        outcome: 'SCORED',
+        reportDate: null,
+        summary: {
+          score: 742,
+          activeAccounts: 3,
+          monthlyEmi: { amount: '18400.00', currency: 'INR' },
+          maxDpd12m: 0,
+          enquiries6m: 1,
+        },
+        vendorRef: `MOCK_BUREAU_${metadata.correlationId.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40)}`,
+        unitCost: null,
+      };
+      return {
+        success: true,
+        data: simulated as TOutput,
+        metadata: {
+          provider: this.providerId,
+          capability,
+          environment: 'SANDBOX',
+          durationMs: latency,
+          httpStatus: 200,
+          externalTransactionId: `MOCK_TX_${Date.now()}`,
         },
       };
     }

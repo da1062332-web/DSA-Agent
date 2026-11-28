@@ -18,6 +18,7 @@ import { createConsentPort, createPartyPort } from './modules/crm/customers/cons
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
 import { createTaskPort } from './modules/crm/tasks/task-port';
 import { IntegrationRegistry } from './modules/integrations/integration-registry';
+import { createBureauPullPort } from './modules/integrations/bureau-port';
 import { createKycCheckPort } from './modules/integrations/kyc-port';
 import { createApplicationPort } from './modules/origination/applications/application-port';
 import { createCommissionPort } from './modules/finance/commission-port';
@@ -77,6 +78,8 @@ export function createProductionDeps(
     lenderPort: createLenderPort(),
     // PAN and GST checks (POST /v1/verifications/checks) run through this port; without it they fail closed (503).
     kycPort: createKycCheckPort({ registry: new IntegrationRegistry() }),
+    // Credit-bureau pulls (POST /v1/customers/{id}/credit-reports) run through this port; without it they fail closed (503).
+    bureauPort: createBureauPullPort({ registry: new IntegrationRegistry() }),
     dataSharingPort: new PostgresDataSharingPort(),
     documentLinkSecret: options.documentLinkSecret,
     // Document files: an S3-compatible bucket and clamd when configured (config.ts), else local disk and the signature check.

@@ -11,6 +11,7 @@ import type {
   DataSharingPort,
   DecisionPort,
   IdGenerator,
+  BureauPullPort,
   KycCheckPort,
   OutboxPort,
   PartyPort,
@@ -43,6 +44,8 @@ export interface ApiDeps {
   lenderPort?: LenderPort;
   /** Runs provider KYC checks (PAN, GST) for POST /v1/verifications/checks. Provided by integrations. Fails closed (503) without it. */
   kycPort?: KycCheckPort;
+  /** Pulls credit-bureau summaries for POST /v1/customers/{id}/credit-reports. Provided by integrations. Fails closed (503) without it. */
+  bureauPort?: BureauPullPort;
   taskPort?: TaskPort;
   userDirectoryPort?: UserDirectoryPort;
   userDirectory: UserDirectoryPort;

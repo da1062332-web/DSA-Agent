@@ -119,6 +119,8 @@ export function normalizeExternalError(err: unknown): {
 const ACCOUNT_KEY = /(?:account|acct)(?:number|no|num)$|^(?:bank)?account$/;
 /** Keys whose value is an Aadhaar number. */
 const AADHAAR_KEY = /aadhaar|aadhar/;
+/** Keys whose value is a date of birth (P1-05: the bureau pull sends one): dateOfBirth, date_of_birth, dob, birthDate. */
+const DOB_KEY = /^(?:dateofbirth|dob|birthdate|birthday)$/;
 
 function redactText(text: string): string {
   return (
@@ -139,8 +141,8 @@ function redactText(text: string): string {
 
 /**
  * Sensitive Data Redactor for Provider Call Logs (ENT-104 & audit logs).
- * Masks PAN (ABCDE****F), the PAN inside a GSTIN, Aadhaar (last four digits only), bank account numbers (last four digits only),
- * passwords, and tokens. The result is safe to store in a call log; the original payload is never changed.
+ * Masks PAN (ABCDE****F), the PAN inside a GSTIN, Aadhaar (last four digits only), bank account numbers (last four digits only), a date of
+ * birth (by its key), passwords, and tokens. The result is safe to store in a call log; the original payload is never changed.
  */
 export function sanitizeProviderPayload(payload: unknown): unknown {
   if (payload === null || payload === undefined) return payload;
@@ -167,6 +169,8 @@ export function sanitizeProviderPayload(payload: unknown): unknown {
         cleaned[k] = '[REDACTED]';
       } else if ((typeof v === 'string' || typeof v === 'number') && ACCOUNT_KEY.test(plain)) {
         cleaned[k] = maskAccountNumber(String(v));
+      } else if (typeof v === 'string' && DOB_KEY.test(plain)) {
+        cleaned[k] = '[REDACTED]';
       } else if ((typeof v === 'string' || typeof v === 'number') && AADHAAR_KEY.test(plain)) {
         const digits = String(v).replace(/\D/g, '');
         cleaned[k] = digits.length >= 4 ? `XXXXXXXX${digits.slice(-4)}` : 'XXXXXXXX';

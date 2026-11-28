@@ -13,6 +13,7 @@ import {
 import type { BaseAdapter } from './adapter';
 import { sanitizeProviderPayload } from './adapter';
 import { TwilioAdapter } from './providers/twilio-adapter';
+import { BureauAdapter } from './providers/bureau-adapter';
 import { KarzaAdapter } from './providers/karza-adapter';
 import { MockTestAdapter } from './providers/mock-adapter';
 import type { IVaultPort } from './vault-port';
@@ -35,6 +36,7 @@ export class IntegrationRegistry {
     // Register built-in adapters
     this.registerAdapter(new TwilioAdapter());
     this.registerAdapter(new KarzaAdapter());
+    this.registerAdapter(new BureauAdapter());
     this.registerAdapter(new MockTestAdapter());
   }
 

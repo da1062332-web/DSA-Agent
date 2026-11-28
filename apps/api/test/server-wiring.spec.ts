@@ -21,6 +21,7 @@ describe('the production wiring provides what the routes require', () => {
     ['productVersionPort', 'application transitions (T-APP-01)'],
     ['lenderPort', 'complaint referrals to a lender (503 DEPENDENCY_UNAVAILABLE without it)'],
     ['kycPort', 'PAN and GST checks through the KYC provider (503 DEPENDENCY_UNAVAILABLE without it)'],
+    ['bureauPort', 'credit-bureau pulls (503 DEPENDENCY_UNAVAILABLE without it)'],
     ['dataSharingPort', 'document sharing and consent'],
     [
       'decisionPort',

@@ -30,12 +30,10 @@
 
 import {
   ERROR_HTTP_STATUS,
-  RETRYABLE_ERROR_CODES,
   maskAccountNumber,
   maskPan,
   type AdapterExecutionMetadata,
   type AdapterResult,
-  type ErrorCode,
   type ErrorDetail,
   type HealthCheckResult,
   type IntegrationEnvironment,
@@ -43,10 +41,22 @@ import {
   type VerificationResult,
 } from '@dsa/contracts';
 import { z } from 'zod';
-import { normalizeExternalError, type AdapterCallContext, type BaseAdapter } from '../adapter';
+import type { AdapterCallContext, BaseAdapter } from '../adapter';
 import { GSTIN_PATTERN, maskGstin } from '../masking';
 import { nameMatchScore } from '../name-match';
 import type { ResolvedCredentials } from '../vault-port';
+import {
+  DEFAULT_RETRY_DELAY_MS,
+  DEFAULT_TIMEOUT_MS,
+  MAX_TIMEOUT_MS,
+  endpointProblem,
+  failure,
+  postJson,
+  type Failure,
+  type FetchLike,
+} from './vendor-http';
+
+export type { FetchLike } from './vendor-http';
 
 export const KARZA_CAPABILITIES = ['VERIFICATION.PAN', 'VERIFICATION.GST', 'VERIFICATION.BANK'] as const;
 export type KarzaCapability = (typeof KARZA_CAPABILITIES)[number];
@@ -102,18 +112,6 @@ export interface KarzaConfig {
   timeoutMs?: number;
 }
 
-/** The part of fetch this adapter uses; a test passes its own. The default is the global fetch. */
-export type FetchLike = (
-  url: string,
-  init: {
-    method: 'POST';
-    headers: Record<string, string>;
-    body: string;
-    signal: AbortSignal;
-    redirect: 'error';
-  },
-) => Promise<{ status: number; text(): Promise<string> }>;
-
 export interface KarzaAdapterOptions {
   fetchImpl?: FetchLike;
   /** Pause between two attempts of a lookup. A test passes a no-op. */
@@ -123,13 +121,8 @@ export interface KarzaAdapterOptions {
   lookupMaxAttempts?: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 10_000;
-const MAX_TIMEOUT_MS = 60_000;
 const DEFAULT_MIN_MATCH_SCORE = 80;
 const DEFAULT_LOOKUP_ATTEMPTS = 2;
-const DEFAULT_RETRY_DELAY_MS = 300;
-/** HTTP statuses of a gateway that is momentarily down: a lookup is repeated once. Rate limits (429) are not repeated at once. */
-const RETRYABLE_HTTP_STATUSES = new Set([502, 503, 504]);
 
 // ── input ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const upper = (v: unknown) => (typeof v === 'string' ? v.trim().toUpperCase() : v);
@@ -200,60 +193,6 @@ function parseInput(
       masked: capability === 'VERIFICATION.PAN' ? maskPan(id) : maskGstin(id),
     },
   };
-}
-
-// ── failures ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-interface Failure {
-  code: ErrorCode;
-  message: string;
-  retryable: boolean;
-  httpStatus?: number;
-}
-
-/** Retryability always comes from the Contracts §6 catalogue, so it cannot drift from the error code. */
-function failure(code: ErrorCode, message: string, httpStatus?: number): Failure {
-  return { code, message, retryable: RETRYABLE_ERROR_CODES.has(code), httpStatus };
-}
-
-/** HTTP answers that are not 2xx, mapped explicitly. A 4xx other than the rate limit is never worth repeating. */
-function httpFailure(status: number): Failure {
-  if (status === 429) return failure('RATE_LIMITED', 'Karza rate limit reached; retry later.', status);
-  if (status === 408 || status >= 500) {
-    return failure('DEPENDENCY_UNAVAILABLE', `Karza is unavailable (HTTP ${status}); retry later.`, status);
-  }
-  if (status === 400 || status === 422) {
-    return failure('VALIDATION_ERROR', `Karza rejected the request as invalid (HTTP ${status}).`, status);
-  }
-  if (status === 401 || status === 403) {
-    return failure(
-      'INTERNAL_ERROR',
-      'Karza rejected the connection credentials; check the vault secret.',
-      status,
-    );
-  }
-  if (status === 404) {
-    return failure('NOT_FOUND', 'The configured Karza endpoint was not found; check apiEndpoint.', status);
-  }
-  return failure('INTERNAL_ERROR', `Karza answered with an unexpected HTTP ${status}.`, status);
-}
-
-/**
- * A fetch that threw: a timeout, a refused connection, a redirect, a broken body. Only a fixed word describing the cause is handed
- * to normalizeExternalError, never the error's own message, because that text could contain what was being sent.
- */
-function networkFailure(err: unknown): Failure {
-  const name = err instanceof Error ? err.name : '';
-  const cause = (err as { cause?: { code?: unknown } } | null | undefined)?.cause?.code;
-  const label =
-    name === 'TimeoutError' || name === 'AbortError'
-      ? 'timeout'
-      : typeof cause === 'string' && /^[A-Z_]{4,24}$/.test(cause)
-        ? cause.toLowerCase()
-        : 'network error';
-  const normalized = normalizeExternalError(new Error(label));
-  const code: ErrorCode =
-    normalized.code in ERROR_HTTP_STATUS ? (normalized.code as ErrorCode) : 'DEPENDENCY_UNAVAILABLE';
-  return { code, message: normalized.message, retryable: normalized.retryable };
 }
 
 // ── wire format (every assumption of the contract above lives here) ───────────────────────────────────────────────────────────────
@@ -674,49 +613,21 @@ export class KarzaAdapter implements BaseAdapter<KarzaConfig> {
     };
   }
 
-  /** One POST, repeated up to `maxAttempts` times only for a thrown error or a gateway that is down. */
-  private async post(
+  /** One POST (vendor-http.ts), repeated up to `maxAttempts` times only for a thrown error or a gateway that is down. */
+  private post(
     url: string,
     apiKey: string,
     body: Record<string, unknown>,
     timeoutMs: number,
     maxAttempts: number,
-  ): Promise<{ ok: true; status: number; text: string } | { ok: false; failure: Failure }> {
-    const payload = JSON.stringify(body);
-    let last: Failure = failure('DEPENDENCY_UNAVAILABLE', 'Karza did not answer.');
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const res = await this.fetchImpl(url, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', accept: 'application/json', 'x-karza-key': apiKey },
-          body: payload,
-          signal: AbortSignal.timeout(timeoutMs),
-          // The key and the identifier must never follow a redirect to another host.
-          redirect: 'error',
-        });
-        const text = await res.text();
-        if (res.status >= 200 && res.status < 300) return { ok: true, status: res.status, text };
-        last = httpFailure(res.status);
-        if (!RETRYABLE_HTTP_STATUSES.has(res.status)) return { ok: false, failure: last };
-      } catch (err) {
-        last = networkFailure(err);
-      }
-      if (attempt < maxAttempts) await this.sleep(this.retryDelayMs);
-    }
-    return { ok: false, failure: last };
+  ): ReturnType<typeof postJson> {
+    return postJson(
+      { fetchImpl: this.fetchImpl, sleep: this.sleep, retryDelayMs: this.retryDelayMs, vendor: 'Karza' },
+      url,
+      { 'x-karza-key': apiKey },
+      body,
+      timeoutMs,
+      maxAttempts,
+    );
   }
-}
-
-/** Null when `endpoint` is a usable https URL without embedded credentials; otherwise what is wrong with it. */
-function endpointProblem(endpoint: unknown): string | null {
-  if (typeof endpoint !== 'string' || endpoint.trim() === '') return 'apiEndpoint is not set';
-  let url: URL;
-  try {
-    url = new URL(endpoint);
-  } catch {
-    return 'apiEndpoint must be an absolute URL';
-  }
-  if (url.protocol !== 'https:') return 'apiEndpoint must use https';
-  if (url.username !== '' || url.password !== '') return 'apiEndpoint must not contain credentials';
-  return null;
 }
