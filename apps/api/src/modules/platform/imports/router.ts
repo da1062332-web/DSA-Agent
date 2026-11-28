@@ -5,6 +5,7 @@ import {
   ConfigureMappingSchema,
   CreateImportSchema,
   RollbackImportSchema,
+  SaveLenderMisMappingInputSchema,
 } from '@dsa/contracts';
 import { Router, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
@@ -12,6 +13,7 @@ import { requireCtx } from '../../../http/request';
 import type { ApiDeps } from '../../types';
 import { ImportRepository } from './repository';
 import { ImportService } from './service';
+import { MisMappingRepository } from './mis-mapping-repository';
 
 function handleZodError(err: ZodError): never {
   const details = err.issues.map((i) => ({
@@ -33,7 +35,9 @@ function getParam(req: Request, name: string): string {
 export function createRouter(deps: ApiDeps): Router {
   const router = Router();
   const repo = (deps.importRepository as ImportRepository) ?? new ImportRepository();
-  const service = new ImportService(deps, repo);
+  // Injectable like importRepository, so the MIS paths can be exercised without a database.
+  const misRepo = (deps.misMappingRepository as MisMappingRepository) ?? new MisMappingRepository();
+  const service = new ImportService(deps, repo, undefined, misRepo);
 
   /**
    * POST /v1/imports: Upload file and create import batch
@@ -144,6 +148,44 @@ export function createRouter(deps: ApiDeps): Router {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="import_${id}_errors.csv"`);
     res.status(200).send(buffer);
+  });
+
+  /**
+   * P1-07: the lender's saved MIS mapping — which column holds what, how the bank words each stage, how it writes
+   * dates. GET /v1/lenders/:lenderId/mis-mapping
+   */
+  router.get('/lenders/:lenderId/mis-mapping', async (req: Request, res: Response) => {
+    const ctx = requireCtx(req);
+    const lenderId = getParam(req, 'lenderId');
+
+    const mapping = await deps.txRunner.withTenantTx(ctx, (tx) => service.getMisMapping(tx, ctx, lenderId));
+
+    // 404 rather than an empty object: a lender with no mapping saved yet is a different thing from one whose
+    // mapping is empty, and the editor opens differently for each.
+    if (!mapping) {
+      throw AppError.of('NOT_FOUND', `No MIS mapping saved for lender ${lenderId}.`);
+    }
+    res.setHeader('ETag', `"${mapping.lockVersion}"`);
+    res.status(200).json(mapping);
+  });
+
+  /**
+   * PUT /v1/lenders/:lenderId/mis-mapping — save or replace it. PUT, not PATCH: a mapping is replaced whole, and a
+   * half-updated status map would silently stop matching the words it no longer lists.
+   */
+  router.put('/lenders/:lenderId/mis-mapping', async (req: Request, res: Response) => {
+    const ctx = requireCtx(req);
+    const lenderId = getParam(req, 'lenderId');
+
+    const parsed = SaveLenderMisMappingInputSchema.safeParse(req.body);
+    if (!parsed.success) handleZodError(parsed.error);
+
+    const mapping = await deps.txRunner.withTenantTx(ctx, (tx) =>
+      service.saveMisMapping(tx, ctx, lenderId, parsed.data),
+    );
+
+    res.setHeader('ETag', `"${mapping.lockVersion}"`);
+    res.status(200).json(mapping);
   });
 
   /**

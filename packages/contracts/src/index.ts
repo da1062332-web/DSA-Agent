@@ -19,6 +19,7 @@ export * from './document-sharing';
 export * from './verification';
 export * from './connector';
 export * from './lender-case';
+export * from './lender-mis-mapping';
 export * from './sanction';
 export * from './lenders';
 export * from './products';
@@ -50,6 +51,7 @@ export type * from './ports/task-port';
 export type * from './ports/application-port';
 export type * from './ports/complaint-subject-port';
 export type * from './ports/product-version-port';
+export type * from './ports/lender-case-status-port';
 export type * from './ports/lender-port';
 export type * from './ports/lender-policy-port'; // P1-04 (Dipanshu)
 export type * from './ports/lender-case-package-port'; // P2-04 (Dipanshu)

@@ -14,7 +14,11 @@ export const IMPORT_BATCH_STATUSES = [
 ] as const;
 export type ImportBatchStatus = (typeof IMPORT_BATCH_STATUSES)[number];
 
-export const TARGET_ENTITY_TYPES = ['LEAD', 'CUSTOMER'] as const;
+/**
+ * P1-07: LENDER_CASE_STATUS is a bank's daily status sheet, not a list of records to create. Its rows match
+ * existing lender cases by the bank's own reference number and move them; nothing is inserted.
+ */
+export const TARGET_ENTITY_TYPES = ['LEAD', 'CUSTOMER', 'LENDER_CASE_STATUS'] as const;
 export type TargetEntityType = (typeof TARGET_ENTITY_TYPES)[number];
 
 export const IMPORT_FILE_FORMATS = ['CSV', 'XLSX'] as const;
@@ -61,6 +65,11 @@ export const CreateImportSchema = z.object({
   fileFormat: z.enum(IMPORT_FILE_FORMATS).default('CSV'),
   filename: z.string().min(1).max(255),
   contentBase64: z.string().min(1).optional(),
+  /**
+   * Per-target options stored with the batch. LENDER_CASE_STATUS requires `lenderId`: which bank's sheet this is
+   * decides the mapping that reads it, and recording it on the batch is what makes a past import auditable.
+   */
+  importOptions: z.record(z.unknown()).default({}),
 });
 export type CreateImportDto = z.infer<typeof CreateImportSchema>;
 

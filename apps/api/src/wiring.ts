@@ -25,6 +25,11 @@ import { createCommissionPort } from './modules/finance/commission-port';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createLenderPolicyPort } from './modules/origination/catalogue/lender-policy-port';
+import { createLenderCaseStatusPort } from './modules/origination/lender-cases/status-port';
+import { createSanctionTranchePort } from './modules/origination/sanctions/tranche-port';
+import { SanctionService } from './modules/origination/sanctions/service';
+import { SqlSanctionRepository } from './modules/origination/sanctions/repository';
+import { SqlLenderCaseRepository } from './modules/origination/lender-cases/repository';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
 import { LocalDocumentStorage } from './modules/origination/document-sharing/storage-port';
 import { createLenderCasePackagePort } from './modules/origination/lender-cases/package-port';
@@ -57,6 +62,12 @@ export function createProductionDeps(
     outboxPort,
     idGenerator: ids,
   });
+  const applicationPort = createApplicationPort({ ids, audit });
+  const enqueueJob: ApiDeps['enqueueJob'] = (tx, tenantId, jobType, payload, runAt) =>
+    globalJobQueue.enqueue(tx, ids.next('job'), tenantId, jobType, payload, runAt);
+  const consentPort = createConsentPort();
+  const taskPortForCases = taskPort;
+
   return {
     txRunner,
     authz: createAuthz(),
@@ -67,10 +78,25 @@ export function createProductionDeps(
     decisionPort,
     taskPort,
     // Lead conversion creates applications through this port; lender cases read the document checklist through it.
-    applicationPort: createApplicationPort({ ids, audit }),
+    applicationPort,
     commissionPort: createCommissionPort(),
+    // P1-07: a bank's status sheet moves cases and records tranches only through these two ports, inside the
+    // batch's own transaction, so it takes the same path as a person's click: same rules, audit and outbox.
+    // (Wording note: do not start a sentence in this file with the word that begins an ES module statement.
+    // TEST-WIRING-99 strips module statements with a regex that runs to the next semicolon, so such a sentence
+    // swallows the code after it and fails the test for a reason that has nothing to do with the code.)
+    lenderCaseStatusPort: createLenderCaseStatusPort({
+      repository: new SqlLenderCaseRepository(),
+      consentPort,
+      applicationPort,
+      taskPort: taskPortForCases,
+      enqueueJob,
+    }),
+    sanctionTranchePort: createSanctionTranchePort(
+      new SanctionService(new SqlSanctionRepository(), txRunner, applicationPort),
+    ),
     // Lender packages and submissions fail closed (503) without it: nothing is shared without consent.
-    consentPort: createConsentPort(),
+    consentPort,
     // Applications created from a customer (API-APP-001) and added parties (API-APP-006) read the customer through it.
     partyPort: createPartyPort(),
     // Lender matching clubs co-applicant income and reads EMIs, age, pincode and vintage from the customer profiles through it.
@@ -95,8 +121,7 @@ export function createProductionDeps(
     documentStore: options.documentStore,
     documentQuarantineStore: options.documentQuarantineStore,
     documentScanner: options.documentScanner,
-    enqueueJob: (tx, tenantId, jobType, payload, runAt) =>
-      globalJobQueue.enqueue(tx, ids.next('job'), tenantId, jobType, payload, runAt),
+    enqueueJob,
   };
 }
 

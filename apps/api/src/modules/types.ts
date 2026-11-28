@@ -2,6 +2,8 @@ import type {
   ApplicationPort,
   AuditPort,
   CommissionPort,
+  LenderCaseStatusPort,
+  SanctionTranchePort,
   ComplaintSubjectPort,
   LenderPort,
   LenderPolicyPort,
@@ -38,6 +40,11 @@ export interface ApiDeps {
   applicationPort?: ApplicationPort;
   /** P2-01: lets invoices and reconciliation read earned commission without entering the finance module. */
   commissionPort?: CommissionPort;
+  /** P1-07: the MIS import moves lender cases and records tranches only through these. */
+  lenderCaseStatusPort?: LenderCaseStatusPort;
+  sanctionTranchePort?: SanctionTranchePort;
+  /** Injected in tests so the MIS import paths run without a database; production uses the real repository. */
+  misMappingRepository?: unknown;
   /** Confirms complaint subjects exist in the caller tenant (MOD-GRV). Required for complaint intake; fails closed without it. */
   complaintSubjectPort?: ComplaintSubjectPort;
   /** Checks a product version for an application transition (T-APP-01). Provided by origination/catalogue. */
