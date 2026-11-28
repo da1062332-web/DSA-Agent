@@ -19,6 +19,7 @@ import {
   maskMobile,
   maskName,
   normalizeEmail,
+  mobileHashCandidates,
   normalizeMobile,
 } from './normalizer';
 import type { ConsentRecordRow, CustomerRepository, CustomerRow } from './repository';
@@ -27,6 +28,7 @@ import type {
   CreateConsentInput,
   CreateCustomerInput,
   CustomerListQuery,
+  CustomerSearchInput,
   MaskedCustomerResource,
   UpdateCustomerInput,
   WithdrawConsentInput,
@@ -397,6 +399,48 @@ export class CustomerService implements PartyPort, ConsentPort {
         limit: query.limit,
       },
     };
+  }
+
+  /**
+   * POST /v1/customers/search: by mobile (exact, keyed hash) or by part of the name, inside the caller's customer.read scope.
+   * Active customers only (a merged record is not offered for a new file). Results are masked like the list.
+   */
+  async searchCustomers(
+    tx: Tx,
+    ctx: RequestContext,
+    input: CustomerSearchInput,
+  ): Promise<{ data: MaskedCustomerResource[]; meta: { nextCursor: string | null; limit: number } }> {
+    requirePermission(ctx, 'customer.read');
+    const scope = getCustomerScopeFilter(ctx, 'customer.read');
+    const compact = input.query.replace(/[\s\-()]/g, '');
+    const isMobile = /^(\+?91|0)?[6-9][0-9]{9}$/.test(compact);
+    if (!isMobile && /\d{5,}/.test(compact)) {
+      // A long number that is not a mobile could be a PAN, Aadhaar or account number: never searched, never echoed.
+      throw AppError.of('VALIDATION_ERROR', 'Search by name or by a 10-digit mobile number.', [
+        { field: 'query', issue: 'UNSUPPORTED_SEARCH' },
+      ]);
+    }
+    if (!isMobile) assertNoS3Data(input.query, 'query');
+    const tenantId = ctx.principal.tenantId;
+    const result = await this.deps.repository.listCustomers(tx, {
+      tenantId,
+      partyType: input.partyType,
+      status: 'ACTIVE',
+      nameContains: isMobile ? undefined : input.query,
+      mobileHashes: isMobile ? mobileHashCandidates(tenantId, normalizeMobile(compact)) : undefined,
+      excludeIds: input.excludeIds,
+      allowedBranchIds: scope.branchIds,
+      allowedTeamUserIds: scope.teamUserIds,
+      allowedOwnUserId: scope.ownUserId,
+      isTenantWide: scope.isTenantWide,
+      limit: input.limit,
+    });
+    const data: MaskedCustomerResource[] = [];
+    for (const c of result.customers) {
+      const contactPoints = await this.deps.repository.findPrimaryContactPoints(tx, c.tenant_id, c.id);
+      data.push(this.toCustomerResource(c, contactPoints));
+    }
+    return { data, meta: { nextCursor: null, limit: input.limit } };
   }
 
   /**

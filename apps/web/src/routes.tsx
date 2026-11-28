@@ -7,6 +7,7 @@ import { LoginPage, MfaRedirect } from './auth/LoginPage';
 import { ForgotPasswordPage, ResetPasswordPage } from './auth/PasswordPages';
 import { SecurityPage } from './auth/SecurityPage';
 import { PublicUploadPage } from './features/document-sharing/PublicUploadPage';
+import { StatusPage } from './features/status-link/StatusPage';
 import { AppLayout } from './shell/AppLayout';
 import { HomePage } from './shell/HomePage';
 import { RoleDashboardRouter } from './features/dashboard/RoleDashboardRouter';
@@ -36,6 +37,7 @@ export const routes: RouteObject[] = [
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/accept-invitation', element: <AcceptInvitationPage /> },
   { path: '/upload/:token', element: <PublicUploadPage /> },
+  { path: '/status/:token', element: <StatusPage /> },
   {
     element: <AppLayout />,
     errorElement: <RouteErrorBoundary />,

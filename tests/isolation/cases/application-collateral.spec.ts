@@ -1,5 +1,5 @@
-// TEST-SEC-001 cases for application collateral (owner: Bhushan, task P1-03, migration 0111). A tenant B principal with every
-// application permission must not list, add, edit or remove tenant A collateral: each answers 404 and the row is unchanged. The full
+// TEST-SEC-001 cases for application collateral (owner: Bhushan, task P1-03, migration 0111) and the status history (loan-file page).
+// A tenant B principal with every application permission must not list, add, edit or remove tenant A collateral: each answers 404 and the row is unchanged. The full
 // behaviour is in apps/api/test/collateral.int.spec.ts.
 import type { PermissionCode } from '@dsa/contracts';
 import request from 'supertest';
@@ -73,5 +73,18 @@ describe('TEST-SEC-001 application collateral: tenants never cross', () => {
       [APP_A],
     );
     expect(rows.rows).toEqual([{ city: 'Pune', removed_at: null, lock_version: 0 }]);
+  });
+
+  it('API-APP-HIST-001: tenant B cannot read the status history of a tenant A application (404)', async () => {
+    await env.admin.query(
+      `insert into app.application_status_history (id, tenant_id, application_id, from_status, to_status, transition_code, actor)
+       values ('ash_iso_hist_a1', $1, $2, null, 'DRAFT', 'CREATE', $3)`,
+      [env.A.tenantId, APP_A, env.A.userIds[0]],
+    );
+    const own = await request(env.appAs(env.A, APP_CODES)).get(`/v1/applications/${APP_A}/status-history`);
+    expect(own.status).toBe(200);
+    expect(own.body.data.map((e: { id: string }) => e.id)).toEqual(['ash_iso_hist_a1']);
+    const b = env.appAs(env.B, [...ALL_ADMIN, ...APP_CODES]);
+    expect((await request(b).get(`/v1/applications/${APP_A}/status-history`)).status).toBe(404);
   });
 });

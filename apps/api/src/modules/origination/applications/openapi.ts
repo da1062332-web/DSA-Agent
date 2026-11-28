@@ -20,6 +20,7 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z, type ZodTypeAny } from 'zod';
 import { registerOperation } from '../../../http/openapi-op';
 import { ChecklistResponseSchema } from './checklist-schemas';
+import { StatusHistoryEntry } from './history';
 import { registerLenderMatchOpenApi } from './lender-matches-openapi';
 import { registerLenderPackOpenApi } from './lender-pack-openapi';
 import {
@@ -369,6 +370,20 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
     },
   });
 
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/applications/{id}/status-history',
+    tags: tag,
+    operationId: 'API-APP-HIST-001',
+    summary:
+      'The status journey of the application, oldest first: every transition and roll-up with who, when and the recorded reason (application.read)',
+    responses: {
+      200: { description: 'Status history', content: json(listResponse(StatusHistoryEntry)) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also another tenant or outside the caller scope)' },
+    },
+  });
+
   // ---- P1-03 property collateral (collateral.ts, migration 0111) ----
   registry.registerPath({
     method: 'get',
@@ -666,6 +681,59 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
     responses: {
       200: { description: 'The file', content: { 'application/octet-stream': { schema: z.string() } } },
       404: { description: 'NOT_FOUND (link unknown, expired or tampered)' },
+    },
+  });
+
+  // ---- P3-05 customer status link (status-link.ts) ----
+  const StatusLinkCreated = z.object({ url: z.string(), expiresAt: z.string(), reference: z.string() });
+  const StatusLinkView = z.object({
+    application: z.object({
+      reference: z.string(),
+      loanType: z.string(),
+      appliedOn: z.string(),
+    }),
+    stage: z.string(),
+    progress: z.object({
+      steps: z.array(z.string()),
+      currentIndex: z.number().int().nullable(),
+      closed: z.boolean(),
+    }),
+    pendingDocuments: z.array(
+      z.object({
+        name: z.string(),
+        status: z.enum(['PENDING', 'REJECTED', 'EXPIRED']),
+        label: z.string(),
+      }),
+    ),
+    lastUpdated: z.string(),
+    expiresAt: z.string(),
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/applications/{id}/status-link',
+    tags: tag,
+    operationId: 'API-APP-STATUS-LINK',
+    summary:
+      'Create a signed status link for the customer (application.read). The url opens /status/{token} and expires after seven days',
+    responses: {
+      201: { description: 'Created: { url, expiresAt }', content: json(StatusLinkCreated) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also another tenant or outside the caller scope)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/public/v1/status/{token}',
+    tags: tag,
+    operationId: 'API-APP-STATUS-VIEW',
+    summary:
+      'The customer view of a status link: stage, documents still pending and the last update date. No sign-in; rate-limited per address',
+    security: [],
+    responses: {
+      200: { description: 'The view', content: json(StatusLinkView) },
+      410: { description: 'LINK_EXPIRED (invalid, expired or unknown link)' },
+      429: { description: 'RATE_LIMITED' },
     },
   });
 }

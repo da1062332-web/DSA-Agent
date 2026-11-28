@@ -14,6 +14,7 @@ import {
   CreateConsentSchema,
   CreateCustomerSchema,
   CustomerListQuerySchema,
+  CustomerSearchSchema,
   UpdateCustomerSchema,
   WithdrawConsentSchema,
 } from './types';
@@ -78,6 +79,21 @@ export function createRouter(
   registerCustomerExtraRoutes(router, deps, repository);
   // P1-02 profile, encrypted identity, API-CUST-006 reveal and addresses (customer-profile.ts).
   registerCustomerProfileRoutes(router, deps, repository);
+
+  // POST /v1/customers/search — find an existing customer by mobile or name (2026-11-28; the term travels in the body, not the URL).
+  router.post('/customers/search', async (req: Request, res: Response) => {
+    const ctx = getRequestContext(req);
+    deps.authz.requirePermission(ctx, 'customer.read');
+    const parsed = CustomerSearchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      handleZodError(parsed.error);
+    }
+    const result = await deps.txRunner.withTenantTx(ctx, async (tx) =>
+      service.searchCustomers(tx, ctx, parsed.data),
+    );
+    res.set('Cache-Control', 'no-store');
+    res.status(200).json(result);
+  });
 
   // API-CUST-001: POST /v1/customers — Create Customer
   router.post('/customers', async (req: Request, res: Response) => {
