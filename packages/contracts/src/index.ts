@@ -54,3 +54,4 @@ export type * from './ports/commission-port';
 export type * from './ports/kyc-port';
 export * from './s3-text';
 export * from './customer-profile';
+export * from './application-collateral'; // P1-03 (Bhushan)

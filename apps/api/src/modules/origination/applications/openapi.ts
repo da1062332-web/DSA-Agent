@@ -1,5 +1,9 @@
 // OpenAPI registration for origination/applications (owner: Dev 3). Swagger group: MOD-APP Loan Applications.
 import {
+  Collateral,
+  CollateralCreate,
+  CollateralUpdate,
+  PARTY_RELATIONSHIPS,
   CompleteUploadResponseSchema,
   CreateUploadIntentSchema,
   DocumentLinkRequestSchema,
@@ -38,7 +42,7 @@ export const tags = [
   {
     name: 'MOD-APP Loan Applications',
     description:
-      'Internal loan file (MOD-APP): create from a customer, list, read, edit, hold, transitions, parties, owners, completeness and waivers. Reads need application.read; changes need the permission named on each operation and an If-Match version. Scope: RM sees own, branch roles see their branch, org owner sees the tenant.',
+      'Internal loan file (MOD-APP): create from a customer, list, read, edit, hold, transitions, parties, property collateral, owners, completeness and waivers. Reads need application.read; changes need the permission named on each operation and an If-Match version. Scope: RM sees own, branch roles see their branch, org owner sees the tenant.',
   },
   {
     name: 'MOD-DOC Documents',
@@ -287,7 +291,7 @@ const Party = z.object({
   customerId: z.string(),
   role: z.enum(['PRIMARY', 'CO_APPLICANT', 'GUARANTOR']),
   partyType: z.enum(['INDIVIDUAL', 'ENTITY']),
-  relationshipToPrimary: z.string().nullable(),
+  relationshipToPrimary: z.enum(PARTY_RELATIONSHIPS).nullable(),
   removedAt: z.string().nullable(),
   createdAt: z.string(),
 });
@@ -295,6 +299,7 @@ const Party = z.object({
 /** API-APP-001, 006, 008, 009, 011 and MOD-DOC (API-DOC-001..009, API-PRV-004 legal holds). */
 function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[]): void {
   const idem = [{ $ref: '#/components/parameters/IdempotencyKey' }];
+  const ifMatch = [{ $ref: '#/components/parameters/IfMatch' }];
   const idemIfMatch = [...idem, { $ref: '#/components/parameters/IfMatch' }];
 
   registry.registerPath({
@@ -354,8 +359,78 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
           'VERSION_CONFLICT or INVALID_STATE (with a lender already, or removing the PRIMARY party)',
       },
       422: {
-        description: 'VALIDATION_ERROR (customer unknown or already a party; party not on the application)',
+        description:
+          'VALIDATION_ERROR (customer already a party; party not on the application; relationshipToPrimary REQUIRED for a co-applicant, FAMILY_NEEDS_INDIVIDUALS, DIRECTOR_NEEDS_ENTITY, or a second SPOUSE)',
       },
+    },
+  });
+
+  // ---- P1-03 property collateral (collateral.ts, migration 0111) ----
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/applications/{id}/collateral',
+    tags: tag,
+    operationId: 'API-APP-COL-001',
+    summary:
+      'Live property collateral on the application (application.read). The value is served as { amount, currency }',
+    responses: {
+      200: { description: 'Collateral items', content: json(listResponse(Collateral)) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also another tenant or outside the caller scope)' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/v1/applications/{id}/collateral',
+    tags: tag,
+    operationId: 'API-APP-COL-002',
+    summary:
+      'Add a pledged property while the file is Draft, Documents pending or Under review (application.update). ETag is the item version',
+    parameters: idem,
+    request: { body: { required: true, content: json(CollateralCreate) } },
+    responses: {
+      201: { description: 'Added', content: json(Collateral) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND' },
+      409: { description: 'INVALID_STATE (the application is with a lender or closed)' },
+      422: {
+        description:
+          'VALIDATION_ERROR (value not INR or not above zero, pincode, identity or account numbers in the address, appraisal date in the future, more than 20 items)',
+      },
+    },
+  });
+
+  registry.registerPath({
+    method: 'patch',
+    path: '/v1/applications/{id}/collateral/{collateralId}',
+    tags: tag,
+    operationId: 'API-APP-COL-003',
+    summary: 'Edit a collateral item (application.update; If-Match is the item version)',
+    parameters: ifMatch,
+    request: { body: { required: true, content: json(CollateralUpdate) } },
+    responses: {
+      200: { description: 'Edited', content: json(Collateral) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also a removed item or one on another application)' },
+      409: { description: 'VERSION_CONFLICT or INVALID_STATE' },
+      422: { description: 'VALIDATION_ERROR' },
+    },
+  });
+
+  registry.registerPath({
+    method: 'delete',
+    path: '/v1/applications/{id}/collateral/{collateralId}',
+    tags: tag,
+    operationId: 'API-APP-COL-004',
+    summary:
+      'Remove a collateral item (soft delete, kept for audit) (application.update; If-Match is the item version)',
+    parameters: ifMatch,
+    responses: {
+      204: { description: 'Removed' },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND' },
+      409: { description: 'VERSION_CONFLICT or INVALID_STATE' },
     },
   });
 
