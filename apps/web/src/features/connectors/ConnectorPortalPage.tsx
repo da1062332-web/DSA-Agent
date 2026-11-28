@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { displayMobile } from '../../shell/display';
 import { apiFetch } from '../../api/client';
 import { useToast } from '../../shell/toast';
 import { useMe } from '../../api/useMe';
@@ -278,7 +279,7 @@ export function ConnectorPortalPage() {
 
   const referralColumns: ColumnDef<PortalReferral>[] = [
     { id: 'name', header: 'Applicant Name', render: (ref) => <strong>{ref.name}</strong> },
-    { id: 'mobile', header: 'Mobile (Masked)', render: (ref) => ref.mobileMasked || 'XXXXXX' },
+    { id: 'mobile', header: 'Mobile (Masked)', render: (ref) => displayMobile(ref.mobileMasked) || 'XXXXXX' },
     {
       id: 'product',
       header: 'Product',

@@ -21,6 +21,7 @@ import { ApiError, apiFetch } from '../../api/client';
 import { Can } from '../../shell/Can';
 import { isSimulatedProvider } from './simulated';
 import { ApplicationSelect, CustomerSelect, LeadSelect } from '../../shell/selectors';
+import { displayContact } from '../../shell/display';
 import {
   MESSAGE_CHANNELS,
   type MessageChannel,
@@ -289,7 +290,7 @@ export function MessageComposer({ templates, onMessageSent }: MessageComposerPro
                   <Chip size="small" label={sendResult.data.status} color="success" />
                 </Typography>
                 <Typography variant="body2" sx={{ mt: 0.5 }}>
-                  Recipient Masked: <code>{sendResult.data.recipientMasked}</code> &bull; Provider:{' '}
+                  Recipient Masked: <code>{displayContact(sendResult.data.recipientMasked)}</code> &bull; Provider:{' '}
                   <code>{sendResult.data.provider}</code>
                 </Typography>
               </Alert>

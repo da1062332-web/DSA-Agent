@@ -15,6 +15,8 @@ import {
   type PartnerUploadSessionRequest,
   type PartnerUploadSessionResponse,
   type RequestContext,
+  containsAadhaar,
+  containsPan,
 } from '@dsa/contracts';
 import type { ApiDeps } from '../types';
 import { hashApiKey, InMemoryApiKeyStore, type ApiKeyRecord, type ApiKeyStore } from './auth-middleware';
@@ -99,16 +101,15 @@ export class PartnerApiService {
   private scanProhibitedData(val: unknown) {
     if (!val) return;
     const str = typeof val === 'string' ? val : JSON.stringify(val);
-    // PAN: [A-Z]{5}[0-9]{4}[A-Z]{1}
-    if (/[A-Za-z]{5}\d{4}[A-Za-z]/.test(str)) {
+    // Shared identity predicates (freeTextNoS3's own patterns), so the partner refusal and the free-text guard agree.
+    if (containsPan(str)) {
       throw AppError.of(
         'VALIDATION_ERROR',
         'Plaintext PAN detected. S3-class identity data is prohibited in Partner API.',
         [{ field: 'metadata', issue: 'S3_PAN_PROHIBITED' }],
       );
     }
-    // Aadhaar: 12 digits
-    if (/\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b/.test(str)) {
+    if (containsAadhaar(str)) {
       throw AppError.of(
         'VALIDATION_ERROR',
         'Plaintext Aadhaar detected. S3-class identity data is prohibited in Partner API.',

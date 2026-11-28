@@ -134,6 +134,8 @@ export const ID_PREFIXES = [
   'lpo',
   'lmr',
   'lmx',
+  // P2-04 lender document packs (M-121): lender pack profile.
+  'lpp',
   // P2-01 (migration 0141): commission plan slab, invoice number series.
   'cslb',
   'invs',

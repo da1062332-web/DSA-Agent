@@ -10,6 +10,7 @@ import {
   fetchSubmissionPackage,
 } from './api';
 import { LenderCasePanel } from './LenderCasePanel';
+import { DownloadPackButton } from '../lenders/DownloadPackButton'; // P2-04 (Dipanshu)
 import { ApplicationName, LenderName, UserName } from '../../shell/display';
 import { AppCard, DataTable, PageHeader, type ColumnDef } from '../../ui';
 import { NotSet } from '../../ui/NotSet';
@@ -255,6 +256,9 @@ export function LenderCaseDetailPage(): React.ReactElement {
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Field label="Waivers">{waiverCount}</Field>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <DownloadPackButton lenderCaseId={id!} frozen={!!packageQuery.data.frozenAt} />
                   </Grid>
                   <Grid item xs={12}>
                     <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>

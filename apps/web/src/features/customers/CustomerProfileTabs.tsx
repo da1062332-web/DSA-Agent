@@ -1,6 +1,7 @@
 // Customer page tabs for task P1-02 (owner: Bhushan): Profile (employment, income), Identity (PAN and date of birth, masked, with a
 // reveal that needs a reason and a step-up code) and Addresses. Every value is validated with the same zod schemas the API uses.
 import { useEffect, useState } from 'react';
+import { displayPan } from '../../shell/display';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -328,7 +329,7 @@ export function IdentityTab({ customerId, readOnly }: { customerId: string; read
           </Typography>
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography data-testid="customer.identity.pan-masked" sx={{ fontFamily: 'monospace' }}>
-              {revealed?.field === 'PAN' ? revealed.value : (identity.panMasked ?? 'Not stored')}
+              {revealed?.field === 'PAN' ? revealed.value : (displayPan(identity.panMasked) ?? 'Not stored')}
             </Typography>
             {canReveal && identity.panMasked && revealed?.field !== 'PAN' && (
               <Button

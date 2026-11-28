@@ -27,7 +27,7 @@ export interface Empanelment {
   permittedGeos?: Record<string, unknown> | null;
   agreementDocumentId?: string | null;
   status: EmpanelmentStatus;
-  lockVersion: number;
+  version: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,7 +40,7 @@ export interface Lender {
   regulatorRef: string | null;
   status: LenderStatus;
   globalLenderRef: string | null;
-  lockVersion: number;
+  version: number;
   createdAt: string;
   updatedAt: string;
   empanelments?: Empanelment[];

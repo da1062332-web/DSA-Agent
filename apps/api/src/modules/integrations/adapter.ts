@@ -7,6 +7,7 @@ import {
   type HealthCheckResult,
   type IntegrationEnvironment,
 } from '@dsa/contracts';
+import { maskPanText } from '../../http/redact';
 import type { ResolvedCredentials } from './vault-port';
 
 /** What the registry tells an adapter about the call it is making. */
@@ -124,11 +125,7 @@ const DOB_KEY = /^(?:dateofbirth|dob|birthdate|birthday)$/;
 
 function redactText(text: string): string {
   return (
-    text
-      // GSTIN: characters 3 to 12 are the holder's PAN, so the PAN part is masked: 27ABCDE1234F1Z5 -> 27ABCDE****F1Z5
-      .replace(/\b(\d{2}[A-Z]{5})\d{4}([A-Z][1-9A-Z]Z[0-9A-Z])\b/g, '$1****$2')
-      // 10-character PAN: ABCDE1234F -> ABCDE****F
-      .replace(/\b([A-Z]{5})\d{4}([A-Z])\b/g, '$1****$2')
+    maskPanText(text)
       // 12-digit Aadhaar: only the last four digits are ever shown
       .replace(/(?<![\w.])\d{8}(\d{4})(?!\w|\.\d)/g, 'XXXXXXXX$1')
       // any other run of 9 to 18 digits (a bank account or a mobile number): ********1234. A decimal amount is left alone.

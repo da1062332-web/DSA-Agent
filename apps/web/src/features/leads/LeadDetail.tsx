@@ -46,7 +46,7 @@ import {
 import { leadActions } from './lead-actions';
 import { LeadFollowUps } from './LeadFollowUps';
 import { UserSelect } from '../../shell/selectors';
-import { CustomerName, ConnectorName, UserName } from '../../shell/display';
+import { CustomerName, ConnectorName, UserName, displayEmail, displayMobile } from '../../shell/display';
 import { PageHeader, AppButton } from '../../ui';
 import type { ConversionResponse } from './types';
 import { NotSet } from '../../ui/NotSet';
@@ -660,14 +660,14 @@ export function LeadDetail() {
                     Masked Mobile
                   </Typography>
                   <Typography variant="body1" fontWeight="medium">
-                    {lead.mobileMasked}
+                    {displayMobile(lead.mobileMasked)}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Masked Email
                   </Typography>
-                  <Typography variant="body1">{lead.emailMasked || <NotSet />}</Typography>
+                  <Typography variant="body1">{displayEmail(lead.emailMasked) || <NotSet />}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">

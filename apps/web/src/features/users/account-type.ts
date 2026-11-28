@@ -1,6 +1,7 @@
 // What the Users screens show for each account type (STAFF or CONNECTOR). Pure functions, so the rules are tested without rendering.
 // A CONNECTOR account is a partner portal login: it holds no role, and its access comes from its linked connector. Staff accounts keep
 // the behaviour they always had.
+import { displayEmail } from '../../shell/display';
 import type { AccountType } from './types';
 
 export const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = {
@@ -33,7 +34,7 @@ export function hasRoleDetail(user: { userType?: AccountType; assignedRoles?: st
 
 /** The Contact cell text: the masked e-mail, or a dash when the short directory row has none. */
 export function contactText(user: { emailMasked?: string | null }): string {
-  return user.emailMasked ?? '—';
+  return displayEmail(user.emailMasked) ?? '—';
 }
 
 /**

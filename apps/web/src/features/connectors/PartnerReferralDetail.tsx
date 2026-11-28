@@ -14,6 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { displayMobile } from '../../shell/display';
 import { apiFetch, errorText } from '../../api/client';
 import {
   DOCUMENT_STATUS_LABEL,
@@ -73,7 +74,7 @@ export function PartnerReferralDetail({ leadId }: { leadId: string }) {
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 0.5 }}>
           <Chip size="small" label={r.productCategory} variant="outlined" />
           <Typography variant="body2" color="text.secondary">
-            {r.mobileMasked} · Submitted {new Date(r.submittedAt).toLocaleDateString('en-IN')} · Last updated{' '}
+            {displayMobile(r.mobileMasked)} · Submitted {new Date(r.submittedAt).toLocaleDateString('en-IN')} · Last updated{' '}
             {new Date(r.lastUpdatedAt).toLocaleDateString('en-IN')}
           </Typography>
         </Stack>

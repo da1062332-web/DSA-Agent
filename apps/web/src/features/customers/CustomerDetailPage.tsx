@@ -30,7 +30,7 @@ import { CustomerProfileTabs } from './CustomerProfileTabs';
 import { BureauCard } from '../verifications/bureau/BureauCard';
 import { Can } from '../../shell/Can';
 import { BranchSelect } from '../../shell/selectors';
-import { BranchName } from '../../shell/display';
+import { BranchName, displayEmail, displayMobile } from '../../shell/display';
 import { DetailCard, PageHeader } from '../../ui';
 import { hasPermission, useMe } from '../../api/useMe';
 import { useLookup } from '../admin/api';
@@ -241,14 +241,14 @@ export function CustomerDetailPage() {
                     Primary Mobile (Masked per DPDP §8)
                   </Typography>
                   <Typography variant="body1" fontWeight={500}>
-                    {customer.primaryMobileMasked || <NotSet />}
+                    {displayMobile(customer.primaryMobileMasked) || <NotSet />}
                   </Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">
                     Primary Email (Masked)
                   </Typography>
-                  <Typography variant="body1">{customer.primaryEmailMasked || <NotSet />}</Typography>
+                  <Typography variant="body1">{displayEmail(customer.primaryEmailMasked) || <NotSet />}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="caption" color="text.secondary">

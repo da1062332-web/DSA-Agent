@@ -4,6 +4,7 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import {
   AccountingExportQuerySchema,
   CreateInvoiceInputSchema,
+  GenerateLenderInvoiceSchema,
   InvoiceListQuerySchema,
   StatementQuerySchema,
   UpdateInvoiceStatusInputSchema,
@@ -37,6 +38,17 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     summary: 'GET /v1/invoices/accounting-export',
     tag,
     query: AccountingExportQuerySchema,
+  });
+  // P2-01 / TASK-141: the month's commission invoice to one lender. Registered before /v1/invoices/:id to mirror
+  // the router, where the literal path must be matched before the id pattern can swallow it.
+  registerOperation(registry, {
+    method: 'post',
+    path: '/v1/invoices/lender-commission',
+    operationId: 'INV-POST-INVOICES-LENDER-COMMISSION',
+    summary: 'POST /v1/invoices/lender-commission',
+    tag,
+    body: GenerateLenderInvoiceSchema,
+    status: 201,
   });
   registerOperation(registry, {
     method: 'get',

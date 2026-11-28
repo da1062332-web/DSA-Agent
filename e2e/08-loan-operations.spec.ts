@@ -421,6 +421,68 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     await page.route('**/v1/products**', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
     });
+    // The loan-file page (2026-11-28) also reads the parties, collateral, status history and product version. Unmocked, they
+    // would reach the real API with the fake token, get 401 and sign the persona out.
+    const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    await page.route(`**/v1/applications/${APP_ID}/parties**`, async (route) => {
+      await route.fulfill(
+        json({
+          data: [
+            {
+              id: 'pty_qa_001',
+              customerId: 'cus_qa_001',
+              role: 'PRIMARY',
+              partyType: 'INDIVIDUAL',
+              relationshipToPrimary: null,
+              removedAt: null,
+              createdAt: new Date().toISOString(),
+            },
+          ],
+          meta: { nextCursor: null, limit: 1 },
+        }),
+      );
+    });
+    await page.route(`**/v1/applications/${APP_ID}/collateral**`, async (route) => {
+      await route.fulfill(json({ data: [], meta: { nextCursor: null, limit: 20 } }));
+    });
+    await page.route(`**/v1/applications/${APP_ID}/status-history**`, async (route) => {
+      await route.fulfill(
+        json({
+          data: [
+            {
+              id: 'ash_qa_001',
+              fromStatus: null,
+              toStatus: 'DRAFT',
+              fromSubStatus: null,
+              toSubStatus: null,
+              transitionCode: 'CREATE',
+              reason: 'CONVERSION',
+              actorId: 'usr_rm_01',
+              causedByLenderCaseId: null,
+              occurredAt: new Date().toISOString(),
+            },
+          ],
+          meta: { nextCursor: null, limit: 200 },
+        }),
+      );
+    });
+    await page.route('**/v1/product-versions/**', async (route) => {
+      await route.fulfill(json({ id: 'pv_qa_001', productId: 'prd_qa_001', versionNo: 1 }));
+    });
+  }
+
+  /**
+   * Step-up needs a second factor. The web app skips the TOTP dialog when the API says second factors are off (a local API with
+   * SUPABASE_MFA_ENABLED=false) or when the session is marked "project has none", which the persona login seeds. Call before the
+   * login to report them on, then call `allowStepUp` after the login.
+   */
+  async function secondFactorOn(page: Page) {
+    await page.route('**/public/v1/auth/config', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ mfaEnabled: true }) });
+    });
+  }
+  async function allowStepUp(page: Page) {
+    await page.evaluate(() => sessionStorage.setItem('dsa_mfa_project', 'enabled'));
   }
 
   // =========================================================================
@@ -490,15 +552,19 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     });
 
     // 1-2. Open APP-QA-001 and review completeness
+    await secondFactorOn(page);
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
+    await allowStepUp(page);
     await casePage.showBanner('Application Review', 'Checking APP-QA-001 is ready and its checklist complete');
-    await expect(page.getByRole('heading', { name: `Application ${APP_ID}` })).toBeVisible();
+    await expect(page.getByTestId('application.header')).toContainText('APP-QA_001');
     await expect(page.getByText('Ready for submission').first()).toBeVisible();
+    await casePage.openTab('documents');
     await expect(casePage.checklistCard).toContainText(
       'Every required document is accepted, waived or not applicable.',
     );
 
     // 3. The lender case carries the configured lender
+    await casePage.openTab('lenders');
     await expect(casePage.panel).toContainText(LENDER_NAME);
     await expect(casePage.statusChip('DRAFT')).toBeVisible();
 
@@ -538,18 +604,39 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
       await route.fulfill({
         status: 422,
         contentType: 'application/json',
-        body: apiErrorBody('COMPLETENESS_FAILED', 422, 'Mandatory document INCOME_PROOF is not accepted.'),
+        // The shape the API sends (lender-cases/service.ts): one DOCUMENT_OUTSTANDING detail per open mandatory item.
+        body: JSON.stringify({
+          error: {
+            code: 'COMPLETENESS_FAILED',
+            message: 'Mandatory document INCOME_PROOF is not accepted.',
+            httpStatus: 422,
+            correlationId: 'corr_e2e_mock',
+            retryable: false,
+            details: [
+              {
+                field: 'checklist',
+                issue: 'DOCUMENT_OUTSTANDING',
+                meta: { checklistItemId: 'chk_qa_income_001', documentTypeCode: 'INCOME_PROOF', status: 'PENDING' },
+              },
+            ],
+          },
+        }),
       });
     });
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Incomplete Case', 'One mandatory document is still outstanding');
+    await casePage.openTab('documents');
     await expect(casePage.checklistCard).toContainText('1 of 2 required documents still outstanding.');
 
+    await casePage.openTab('lenders');
     await casePage.click(casePage.buildPackageBtn, 1500);
-    await expect(casePage.panel.getByRole('alert')).toContainText('Mandatory document INCOME_PROOF is not accepted.');
+    await expect(casePage.panel.getByRole('alert')).toContainText(
+      'Mandatory document INCOME_PROOF is not accepted. Still open: Income proof (waiting for the customer).',
+    );
     await expect(casePage.statusChip('DRAFT')).toBeVisible();
-    await expect(casePage.submitBtn).toHaveCount(0);
+    // Actions that do not apply to the case's status are shown disabled, not hidden.
+    await expect(casePage.submitBtn).toBeDisabled();
     await casePage.pause(2000);
     await authPage.logout();
   });
@@ -573,8 +660,11 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
       });
     });
 
+    await secondFactorOn(page);
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
+    await allowStepUp(page);
     await casePage.showBanner('Step-Up Gate', 'Submitting without a fresh TOTP code');
+    await casePage.openTab('lenders');
     await casePage.openSubmission('LND-QA-REF-002');
     await expect(authPage.stepUpDialog).toBeVisible();
 
@@ -641,6 +731,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
     await casePage.showBanner('Lender Query', 'Lender asks for an additional income document');
+    await casePage.openTab('lenders');
     await expect(casePage.statusChip('SUBMITTED')).toBeVisible();
     await casePage.raiseQuery('Please share an additional synthetic income proof (QA).');
     await expect(casePage.panel).toContainText('Query recorded successfully.');
@@ -654,12 +745,10 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
 
   // =========================================================================
   // TC-LO-08: respond to the lender query (QA plan Module 08 step 6; API-LCS-007 POST /v1/lender-queries/{queryId}/responses)
-  // KNOWN BUG, expected to fail: LenderCasePanel posts the response to /v1/lender-queries/{lenderCaseId}/responses, so the
-  // real API answers 404. The panel never learns the query ID (no endpoint lists a case's queries). Remove test.fail once
-  // the panel sends the query ID.
+  // The panel lists the case's queries (GET /v1/lender-cases/{id}/queries) and answers the oldest open one, so the response goes to
+  // the query ID. (This was a known bug, marked test.fail, until the panel learned the query ID.)
   // =========================================================================
   test('TC-LO-08: lender query response is recorded against the query', async ({ page }) => {
-    test.fail(true, 'LenderCasePanel sends the lender case ID where API-LCS-007 expects the query ID');
     const authPage = new AuthPage(page);
     const casePage = new LenderCasePage(page);
     const state: CaseState = {
@@ -670,24 +759,37 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     };
     await mockApplicationWorkspace(page, state);
 
+    const raisedQuery = {
+      id: QUERY_ID,
+      tenantId: 'ten_01M595WCNH6H3ZMCVS70XH9GAN',
+      lenderCaseId: CASE_ID,
+      text: 'Please share an additional synthetic income proof (QA).',
+      requestedItems: [],
+      lenderDueDate: null,
+      taskId: null,
+      responseManifestId: null,
+      respondedAt: null,
+      createdAt: new Date().toISOString(),
+      createdBy: 'usr_loanops_01',
+      responseText: null,
+      responseDocumentReferences: [],
+    };
     await page.route(`**/v1/lender-cases/${CASE_ID}/queries`, async (route) => {
+      // GET: the response dialog looks up the oldest unanswered query.
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: [raisedQuery], meta: { nextCursor: null, limit: 50 } }),
+        });
+        return;
+      }
       Object.assign(state, { status: 'QUERY_RAISED', lockVersion: 4 });
       await route.fulfill({
         status: 201,
         headers: { ETag: '"4"' },
         contentType: 'application/json',
-        body: JSON.stringify({
-          query: {
-            id: QUERY_ID,
-            tenantId: 'ten_01M595WCNH6H3ZMCVS70XH9GAN',
-            lenderCaseId: CASE_ID,
-            text: 'Please share an additional synthetic income proof (QA).',
-            requestedItems: [],
-            createdAt: new Date().toISOString(),
-            createdBy: 'usr_loanops_01',
-          },
-          case: lenderCase(state),
-        }),
+        body: JSON.stringify({ query: raisedQuery, case: lenderCase(state) }),
       });
     });
 
@@ -707,6 +809,7 @@ test.describe('Persona 08: Loan Operations (ROLE-LOAN-OPS)', () => {
     });
 
     await authPage.loginAs(PERSONAS.loanOps, `/applications/${APP_ID}`);
+    await casePage.openTab('lenders');
     await casePage.raiseQuery('Please share an additional synthetic income proof (QA).');
     await expect(casePage.statusChip('QUERY_RAISED')).toBeVisible();
 

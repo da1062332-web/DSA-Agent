@@ -47,6 +47,7 @@ export const SEGMENT_TABLE: Record<string, string> = {
   invoices: 'invoice',
   leads: 'lead',
   'lender-cases': 'lender_case',
+  'lender-policies': 'lender_policy', // P1-04 (Dipanshu)
   'lender-queries': 'lender_query',
   'lender-statements': 'lender_statement',
   lenders: 'lender',
@@ -67,6 +68,7 @@ export const SEGMENT_TABLE: Record<string, string> = {
   'rule-simulations': 'rule_simulation',
   'rule-test-cases': 'rule_test_case',
   sanctions: 'sanction',
+  slabs: 'commission_plan_slab',
   shares: 'external_share',
   subscriptions: 'webhook_subscription',
   'support-access-requests': 'support_access_grant',

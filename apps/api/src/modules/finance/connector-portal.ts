@@ -10,7 +10,7 @@
 //   API-CPT-006 POST /portal/v1/disputes                Idempotency-Key; dispute one of my statement lines or payouts
 // The OTP itself is never returned or logged; the consent.otp_requested event carries only its id, for the messaging sender.
 import crypto from 'node:crypto';
-import { AppError, maskMobile, type RequestContext } from '@dsa/contracts';
+import { AppError, freeTextNoS3, maskMobile, type RequestContext } from '@dsa/contracts';
 import { withIdempotency } from '@dsa/kernel';
 import express, { type Router } from 'express';
 import { sql } from 'kysely';
@@ -30,13 +30,12 @@ const DUPLICATE_REFERRAL =
 
 type Row = Record<string, unknown>;
 const OTP_TTL_MS = 10 * 60_000;
-const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const Reason = z
   .string()
   .trim()
   .min(5)
   .max(500)
-  .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers');
+  .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 export const ConsentOtpRequest = z.discriminatedUnion('action', [
   z.object({ action: z.literal('SEND'), mobile: z.string().min(8).max(25) }).strict(),

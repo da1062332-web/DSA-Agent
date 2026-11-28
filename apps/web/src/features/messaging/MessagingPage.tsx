@@ -7,7 +7,7 @@ import { isSimulatedProvider } from './simulated';
 import { TemplateEditor } from './TemplateEditor';
 import { MessageComposer } from './MessageComposer';
 import { Can } from '../../shell/Can';
-import { ApplicationName, CustomerName, LeadName } from '../../shell/display';
+import { ApplicationName, CustomerName, LeadName, displayContact } from '../../shell/display';
 import { DataTable, DetailCard, PageHeader } from '../../ui';
 import type { ColumnDef } from '../../ui';
 import { canPerformAction } from '../../shell/access';
@@ -164,7 +164,7 @@ export function MessagingPage({ defaultTab = 0 }: MessagingPageProps) {
         );
       },
     },
-    { id: 'recipient', header: 'Recipient (Masked)', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{m.recipientMasked}</Box> },
+    { id: 'recipient', header: 'Recipient (Masked)', render: (m) => <Box sx={{ fontFamily: 'monospace' }}>{displayContact(m.recipientMasked)}</Box> },
     {
       id: 'status',
       header: 'Status',

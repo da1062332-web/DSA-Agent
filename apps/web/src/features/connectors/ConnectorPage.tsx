@@ -55,7 +55,15 @@ import {
 } from './connector-workspace-model';
 import { Can } from '../../shell/Can';
 import { ConnectorSelect, LeadSelect, UserSelect } from '../../shell/selectors';
-import { BranchName, ConnectorName, LeadName, UserName } from '../../shell/display';
+import {
+  BranchName,
+  ConnectorName,
+  LeadName,
+  UserName,
+  displayEmail,
+  displayMobile,
+  displayPan,
+} from '../../shell/display';
 import { DataTable, PageHeader } from '../../ui';
 import type {
   AttributionChangeRequestResource,
@@ -572,9 +580,9 @@ export function ConnectorPage() {
           subtitle={
             <Typography variant="body2" color="text.secondary">
               <strong>Contact:</strong> {selectedConnector.contactPerson} • <strong>Mobile:</strong>{' '}
-              {selectedConnector.mobileE164} • <strong>Email:</strong> {selectedConnector.email} •{' '}
+              {displayMobile(selectedConnector.mobileE164)} • <strong>Email:</strong> {displayEmail(selectedConnector.email)} •{' '}
               <strong>PAN:</strong>{' '}
-              <span style={{ fontFamily: 'monospace' }}>{selectedConnector.panMasked}</span>
+              <span style={{ fontFamily: 'monospace' }}>{displayPan(selectedConnector.panMasked)}</span>
             </Typography>
           }
           actions={
@@ -731,7 +739,7 @@ export function ConnectorPage() {
                       PAN (PERMANENT ACCOUNT NUMBER)
                     </Typography>
                     <Typography variant="body1" fontWeight={600} sx={{ fontFamily: 'monospace' }}>
-                      {selectedConnector.panMasked}
+                      {displayPan(selectedConnector.panMasked)}
                     </Typography>
                   </Paper>
                 </Grid>
@@ -1466,16 +1474,16 @@ export function ConnectorPage() {
                   {
                     id: 'pan',
                     header: 'PAN (Masked)',
-                    render: (con) => <Box sx={{ fontFamily: 'monospace' }}>{con.panMasked}</Box>,
+                    render: (con) => <Box sx={{ fontFamily: 'monospace' }}>{displayPan(con.panMasked)}</Box>,
                   },
                   {
                     id: 'contact',
                     header: 'Email / Mobile',
                     render: (con) => (
                       <>
-                        <Typography variant="body2">{con.email}</Typography>
+                        <Typography variant="body2">{displayEmail(con.email)}</Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {con.mobileE164}
+                          {displayMobile(con.mobileE164)}
                         </Typography>
                       </>
                     ),
