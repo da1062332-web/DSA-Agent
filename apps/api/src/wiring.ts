@@ -21,6 +21,8 @@ import { createApplicationSubjectPort } from './modules/origination/applications
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
 import { createLenderPolicyPort } from './modules/origination/catalogue/lender-policy-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
+import { LocalDocumentStorage } from './modules/origination/document-sharing/storage-port';
+import { createLenderCasePackagePort } from './modules/origination/lender-cases/package-port';
 import { PgApiClientRepository } from './modules/partner-api/api-client-repository';
 import { createWebhookOutboxSubscriber } from './modules/partner-api/webhooks';
 import { globalJobQueue } from './modules/platform/job-queue';
@@ -74,6 +76,10 @@ export function createProductionDeps(
     lenderPort: createLenderPort(),
     // Lender matching (P1-04) loads the ACTIVE policies through this port; without it a match run is refused (503).
     lenderPolicyPort: createLenderPolicyPort(),
+    // The lender pack download (P2-04) reads the case's frozen package through this port; without it the download is refused (503).
+    lenderCasePackagePort: createLenderCasePackagePort(),
+    // Customer upload-link files, read by the pack download. The same local store the document-sharing service writes to.
+    customerUploadStore: new LocalDocumentStorage(),
     dataSharingPort: new PostgresDataSharingPort(),
     apiClientRepository: new PgApiClientRepository(txRunner, audit),
     documentLinkSecret: options.documentLinkSecret,

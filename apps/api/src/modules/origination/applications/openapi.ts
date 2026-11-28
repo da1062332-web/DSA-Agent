@@ -20,6 +20,7 @@ import { z, type ZodTypeAny } from 'zod';
 import { registerOperation } from '../../../http/openapi-op';
 import { ChecklistResponseSchema } from './checklist-schemas';
 import { registerLenderMatchOpenApi } from './lender-matches-openapi';
+import { registerLenderPackOpenApi } from './lender-pack-openapi';
 import {
   ApplicantInputs,
   ApplicantInputsUpdate,
@@ -60,6 +61,7 @@ const json = (schema: ZodTypeAny) => ({ 'application/json': { schema } });
 
 export function registerOpenApi(registry: OpenAPIRegistry): void {
   registerLenderMatchOpenApi(registry); // P1-04 (Dipanshu)
+  registerLenderPackOpenApi(registry); // P2-04 (Dipanshu)
   const tag = ['MOD-APP Loan Applications'];
   const ifMatch = [{ $ref: '#/components/parameters/IfMatch' }];
 

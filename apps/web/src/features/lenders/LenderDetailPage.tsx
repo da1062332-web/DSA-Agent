@@ -56,6 +56,7 @@ import { NotSet } from '../../ui/NotSet';
 import { PRODUCT_CATEGORY_OPTIONS, categoryLabel } from '../products/types';
 import { RowAction } from '../../shell/RowAction';
 import { LenderPoliciesCard } from './LenderPoliciesCard';
+import { LenderPackProfileCard } from './LenderPackProfileCard';
 
 export function LenderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -369,6 +370,9 @@ export function LenderDetailPage() {
 
       {/* Credit policies (P1-04, Dipanshu) */}
       <LenderPoliciesCard lenderId={lender.id} lenderOpen={lender.status !== 'TERMINATED'} />
+
+      {/* Document pack profile (P2-04, Dipanshu) */}
+      <LenderPackProfileCard lenderId={lender.id} />
 
       {/* Empanelment Register */}
       <Card sx={{ mb: 4 }}>

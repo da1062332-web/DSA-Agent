@@ -136,6 +136,8 @@ export const ID_PREFIXES = [
   'lpo',
   'lmr',
   'lmx',
+  // P2-04 lender document packs (M-121): lender pack profile.
+  'lpp',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 
