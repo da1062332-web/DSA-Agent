@@ -3,7 +3,8 @@
 //      shown, not counted), everyone's existing EMIs, the FOIR before the new loan, and the property value with the LTV of the request.
 //   2. Eligibility by lender: each lender's own FOIR cap, LTV cap, rate, tenure, age at maturity, bureau score and pincode applied
 //      (P1-04 lender matching), with the eligible amount and the EMI.
-//   3. Credit policy pre-check: the tenant's approved rule set (MOD-ELG), underneath.
+// The rule-set pre-check (MOD-ELG) is not shown here (2026-11-28, at the user's request): the working and the lender answers above
+// already cover what a DSA needs on this step. It stays available on the Eligibility page (/eligibility).
 // The figures come from GET /v1/applications/{id}/lender-matches/inputs, which the lender matching also uses, so the working and the
 // lender answers never disagree.
 import type { LenderMatchPrefill } from '@dsa/contracts';
@@ -24,7 +25,6 @@ import { apiFetch } from '../../../api/client';
 import { hasPermission, useMe } from '../../../api/useMe';
 import { CustomerName } from '../../../shell/display';
 import type { Application } from '../ApplicationsPage';
-import { EligibilityCard } from '../EligibilityCard';
 import { LenderMatchesCard } from '../LenderMatchesCard';
 import { countedText, incomeTotals, ltvPercent } from '../eligibility-working';
 import { formatInr, humanize } from '../loan-file';
@@ -200,24 +200,6 @@ export function EligibilityTab({ app }: { app: Application }) {
           Lender-wise eligibility needs the lender matching permission (lender_match.run).
         </Alert>
       )}
-      <Box>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Credit policy pre-check
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          Your tenant&apos;s approved rules for the chosen product. Preliminary only: the lender makes the
-          credit decision.
-        </Typography>
-        <EligibilityCard
-          applicationId={app.id}
-          applicationStatus={app.status}
-          hasProduct={!!app.productVersionId}
-          autoRun
-          productVersionId={app.productVersionId}
-          updatedAt={app.updatedAt}
-          status={app.status}
-        />
-      </Box>
     </Stack>
   );
 }

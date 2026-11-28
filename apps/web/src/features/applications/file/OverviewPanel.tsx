@@ -6,7 +6,7 @@ import type { CollateralView, CustomerProfileView, LenderMatchRun } from '@dsa/c
 import { useQuery } from '@tanstack/react-query';
 import { ApiError, apiFetch } from '../../../api/client';
 import { hasPermission, useMe } from '../../../api/useMe';
-import { Box, Chip, LinearProgress, Link, Stack, Typography } from '@mui/material';
+import { Box, LinearProgress, Link, Stack, Typography } from '@mui/material';
 import { CustomerName } from '../../../shell/display';
 import { useLookup, useResource } from '../../admin/api';
 import { useChecklist } from '../../documents/api';
@@ -127,18 +127,6 @@ function BorrowerLine({ party }: { party: Party }) {
   );
 }
 
-interface EligibilityLatest {
-  assessedAt: string;
-  results: { result: string; indicativeMaxAmount: { amount: string } | null }[];
-}
-
-const RESULT_TONE: Record<string, 'success' | 'error' | 'warning' | 'default'> = {
-  PASS: 'success',
-  FAIL: 'error',
-  REFER: 'warning',
-  UNKNOWN: 'default',
-};
-
 export function OverviewPanel({
   app,
   journey,
@@ -157,9 +145,6 @@ export function OverviewPanel({
   const parties = useLookup<Party>(`/v1/applications/${app.id}/parties`);
   const collateral = useLookup<CollateralView>(`/v1/applications/${app.id}/collateral`);
   const checklist = useChecklist(app.id);
-  const eligibility = useResource<EligibilityLatest>(
-    `/v1/applications/${app.id}/eligibility-assessments/latest`,
-  );
   // The lender-wise answer (lender matching) is what a DSA quotes; the rule-set check is the fallback.
   const me = useMe();
   const canMatch = hasPermission(me.data, 'lender_match.run');
@@ -183,7 +168,6 @@ export function OverviewPanel({
   const summary = checklist.data?.summary;
   const done = summary ? summary.accepted : 0;
   const pct = summary && summary.total > 0 ? Math.round((done / summary.total) * 100) : 0;
-  const latest = eligibility.data?.results?.[0];
 
   const coApplicants = live.filter((p) => p.role === 'CO_APPLICANT').length;
   const guarantors = live.filter((p) => p.role === 'GUARANTOR').length;
@@ -285,9 +269,7 @@ export function OverviewPanel({
               ? best?.eligibleAmount
                 ? `Up to ${formatInr(best.eligibleAmount.amount)}`
                 : 'No lender yet'
-              : latest
-                ? humanize(latest.result)
-                : '—'
+              : '—'
           }
           sub={
             match.data ? (
@@ -295,29 +277,14 @@ export function OverviewPanel({
                 {eligibleLenders.length} of {match.data.policyCount} lenders eligible
                 {best?.emiMin ? ` · EMI from ${formatInr(best.emiMin.amount)}` : ''}
               </span>
-            ) : latest ? (
-              <>
-                Rule check {fileDate(eligibility.data?.assessedAt)}
-                {latest.indicativeMaxAmount ? ` · up to ${formatInr(latest.indicativeMaxAmount.amount)}` : ''}
-              </>
             ) : canMatch ? (
               'Not worked out yet.'
             ) : (
-              'Not checked yet.'
+              'Lender matching is not available to your role.'
             )
           }
           action={<OpenStep stage="review" label="Open eligibility" onOpen={onOpen} />}
-        >
-          {!match.data && latest && (
-            <Box sx={{ mt: 1 }}>
-              <Chip
-                size="small"
-                label={humanize(latest.result)}
-                color={RESULT_TONE[latest.result] ?? 'default'}
-              />
-            </Box>
-          )}
-        </Tile>
+        />
 
         <Tile
           label="Security"
