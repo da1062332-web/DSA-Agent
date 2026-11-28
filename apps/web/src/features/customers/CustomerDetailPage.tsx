@@ -27,6 +27,7 @@ import {
 } from '@mui/material';
 import { getCustomer, updateCustomer, ApiError } from './api';
 import { CustomerProfileTabs } from './CustomerProfileTabs';
+import { BureauCard } from '../verifications/bureau/BureauCard';
 import { Can } from '../../shell/Can';
 import { BranchSelect } from '../../shell/selectors';
 import { BranchName } from '../../shell/display';
@@ -271,6 +272,11 @@ export function CustomerDetailPage() {
             customerId={customer.id}
             readOnly={!hasPermission(me.data, 'customer.update') || customer.status !== 'ACTIVE'}
           />
+        </Grid>
+
+        {/* P1-05: credit bureau report (shown only with credit_report.read; guest work of the integrations lane) */}
+        <Grid item xs={12}>
+          <BureauCard customerId={customer.id} customerName={customer.fullName} />
         </Grid>
 
         {/* DPDP Consents Lifecycle Card */}
