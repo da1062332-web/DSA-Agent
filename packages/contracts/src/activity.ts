@@ -1,6 +1,7 @@
 // packages/contracts/src/activity.ts — owner: Dev 1 / Dev 5
 import { z } from 'zod';
 import { IdSchema } from './ids';
+import { freeTextNoS3 } from './s3-text';
 
 export const ACTIVITY_KINDS = ['CALL', 'MEETING', 'VISIT', 'NOTE'] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
@@ -24,14 +25,7 @@ export type SubjectType = (typeof SUBJECT_TYPES)[number];
  * Free-text fields reject PAN, Aadhaar and 9–18-digit account patterns with 422 VALIDATION_ERROR (Contracts §12).
  */
 export function containsS2SensitiveData(text: string): boolean {
-  if (!text) return false;
-  // Indian PAN (5 letters, 4 digits, 1 letter)
-  if (/[A-Za-z]{5}\d{4}[A-Za-z]/.test(text)) return true;
-  // Indian Aadhaar (12 digits, starting with 2-9)
-  if (/\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b/.test(text)) return true;
-  // 9–18-digit account / UTR patterns
-  if (/\b\d{9,18}\b/.test(text)) return true;
-  return false;
+  return !!text && freeTextNoS3(text);
 }
 
 export const ActivitySubjectLinkSchema = z.object({

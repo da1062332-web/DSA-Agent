@@ -1,5 +1,5 @@
 // apps/api/src/modules/crm/customers/normalizer.ts — owner: Dev 5 (MOD-CUST)
-import { AppError } from '@dsa/contracts';
+import { AppError, containsAadhaar, containsAccountNumber, containsPan } from '@dsa/contracts';
 import { blindIndexKeys, tenantBlindIndex } from '../../../secrets';
 
 // The keyed hashes used for lookup take their key from MOBILE_HMAC_SECRET (required in production; see src/secrets.ts).
@@ -90,21 +90,21 @@ export function assertNoS3Data(text?: string | null, fieldName = 'text'): void {
   if (!text) return;
 
   // PAN pattern: 5 uppercase letters, 4 digits, 1 uppercase letter
-  if (/[A-Z]{5}[0-9]{4}[A-Z]/i.test(text)) {
+  if (containsPan(text)) {
     throw AppError.of('VALIDATION_ERROR', `${fieldName} contains prohibited PAN pattern`, [
       { field: fieldName, issue: 'PROHIBITED_S3_DATA' },
     ]);
   }
 
   // Aadhaar pattern: 12 digits (with optional spaces)
-  if (/\b[2-9][0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b/.test(text)) {
+  if (containsAadhaar(text)) {
     throw AppError.of('VALIDATION_ERROR', `${fieldName} contains prohibited Aadhaar pattern`, [
       { field: fieldName, issue: 'PROHIBITED_S3_DATA' },
     ]);
   }
 
   // Bank account: 9–18 digit sequences
-  if (/\b[0-9]{9,18}\b/.test(text)) {
+  if (containsAccountNumber(text)) {
     throw AppError.of('VALIDATION_ERROR', `${fieldName} contains prohibited account number pattern`, [
       { field: fieldName, issue: 'PROHIBITED_S3_DATA' },
     ]);

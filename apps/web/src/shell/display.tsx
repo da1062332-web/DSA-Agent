@@ -18,6 +18,54 @@ import type {
   ProductItem,
 } from './selectors';
 import { NotSet } from '../ui/NotSet';
+import {
+  freeTextNoS3,
+  maskEmail as sharedMaskEmail,
+  maskMobile as sharedMaskMobile,
+  maskPan as sharedMaskPan,
+} from '@dsa/contracts';
+
+// ---------------------------------------------------------------------------
+// Identity masks (task P1-01, checklist 4.4). Every screen that shows a PAN, a mobile or an e-mail goes through these, so no screen
+// formats them itself. The rules are the shared ones in @dsa/contracts, the same as the API's list masks.
+// A value the API has already masked is shown as it is, so nothing is masked twice. A value that still carries a raw PAN or a raw
+// mobile is masked even when it also has a star, so a typed `*` cannot pass a real identity number through.
+// ---------------------------------------------------------------------------
+function alreadyMasked(value: string): boolean {
+  // A raw PAN or a run of six or more digits is still identity data, whatever else the text holds.
+  if (freeTextNoS3(value) || /\d{6,}/.test(value)) return false;
+  // Masked e-mails use stars (j***e@domain); masked mobiles and PANs use stars or the XXXXXX placeholder.
+  if (value.includes('@')) return /\*{3,}/.test(value);
+  return /\*{3,}|X{4,}/i.test(value);
+}
+
+/** A PAN as ABCDE****F. Text that is not a 10-character PAN shows as four stars, never as the typed text. */
+export function displayPan(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (alreadyMasked(value)) return value;
+  const cleaned = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return cleaned.length === 10 ? sharedMaskPan(cleaned) : '****';
+}
+
+/** A mobile as +91 ****** 3210. Spaces and punctuation in the value are ignored. */
+export function displayMobile(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (alreadyMasked(value)) return value;
+  return sharedMaskMobile(value.replace(/[^0-9+]/g, '')) ?? null;
+}
+
+/** An e-mail as j***e@example.com. */
+export function displayEmail(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (alreadyMasked(value)) return value;
+  return sharedMaskEmail(value.trim()) ?? null;
+}
+
+/** A contact that is either an e-mail or a mobile, masked by its shape. */
+export function displayContact(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.includes('@') ? displayEmail(value) : displayMobile(value);
+}
 
 /** Resilient lookup hook caching entity collections for name resolution */
 function useDisplayLookup<T>(

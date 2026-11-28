@@ -9,6 +9,7 @@
 import {
   AppError,
   ReviewVersionActionSchema,
+  freeTextNoS3,
   type PermissionCode,
   type RequestContext,
 } from '@dsa/contracts';
@@ -20,13 +21,12 @@ import type { AutomationEngine } from './engine';
 import type { AutomationRepository } from './repository';
 import { reviewAutomationVersion } from './router';
 
-const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
 const Reason = z
   .string()
   .trim()
   .min(3)
   .max(500)
-  .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers');
+  .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers');
 
 export const AutomationEnable = z.object({ enabled: z.boolean(), reason: Reason }).strict();
 export const AutomationDryRun = z

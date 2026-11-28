@@ -3,7 +3,7 @@
 //   PUT /v1/lenders/{id}/reason-map   replace it (config.manage; If-Match on the lender version)
 // Each entry maps the lender's own decline wording to one normalised decline reason code (lender_case.decline_reason_code).
 // mapLenderReason() is what a status update uses to normalise a reason; the match ignores case and surrounding spaces.
-import { AppError } from '@dsa/contracts';
+import { AppError, freeTextNoS3 } from '@dsa/contracts';
 import type { Router } from 'express';
 import { sql } from 'kysely';
 import { z } from 'zod';
@@ -21,8 +21,6 @@ export const DECLINE_REASON_CODES = [
   'OTHER',
 ] as const;
 
-const NO_S3 = [/[A-Z]{5}[0-9]{4}[A-Z]/i, /\b\d{4}\s?\d{4}\s?\d{4}\b/, /\b\d{9,18}\b/];
-
 export const ReasonMapPut = z
   .object({
     mappings: z
@@ -34,7 +32,7 @@ export const ReasonMapPut = z
               .trim()
               .min(2)
               .max(100)
-              .refine((s) => !NO_S3.some((p) => p.test(s)), 'must not contain identity or account numbers'),
+              .refine((s) => !freeTextNoS3(s), 'must not contain identity or account numbers'),
             reasonCode: z.enum(DECLINE_REASON_CODES),
           })
           .strict(),

@@ -23,6 +23,7 @@ import {
   type ColumnDef,
 } from '../../ui';
 import { NotSet } from '../../ui/NotSet';
+import { displayMobile } from '../../shell/display';
 
 export function LeadList() {
   const [stateFilter, setStateFilter] = useState<string>('');
@@ -98,7 +99,7 @@ export function LeadList() {
     {
       id: 'mobileMasked',
       header: 'Mobile (Masked)',
-      accessor: (lead) => lead.mobileMasked,
+      accessor: (lead) => displayMobile(lead.mobileMasked),
     },
     {
       id: 'productCategory',

@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { listCustomers } from './api';
 import type { CustomerResource } from './types';
-import { BranchName } from '../../shell/display';
+import { BranchName, displayEmail, displayMobile } from '../../shell/display';
 import {
   PageHeader,
   StatCard,
@@ -100,9 +100,9 @@ export function CustomerListPage() {
       header: 'Contact Info',
       accessor: (c) => (
         <Box>
-          <Typography variant="body2">{c.primaryMobileMasked || <NotSet />}</Typography>
+          <Typography variant="body2">{displayMobile(c.primaryMobileMasked) || <NotSet />}</Typography>
           <Typography variant="caption" color="text.secondary" display="block">
-            {c.primaryEmailMasked || <NotSet />}
+            {displayEmail(c.primaryEmailMasked) || <NotSet />}
           </Typography>
         </Box>
       ),
