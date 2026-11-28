@@ -5,6 +5,8 @@ import type { ApiDeps } from '../../types';
 import { registerContactRoutes } from './contacts';
 import { registerReasonMapRoutes } from './reason-map';
 import { registerLenderRoutes } from './lenders';
+import { registerLenderPolicyRoutes } from './lender-policies';
+import { registerLenderPackProfileRoutes } from './lender-pack-profiles';
 import { registerProductRoutes } from './products';
 
 export function createRouter(deps: ApiDeps): Router {
@@ -13,5 +15,7 @@ export function createRouter(deps: ApiDeps): Router {
   registerContactRoutes(router, deps);
   registerReasonMapRoutes(router, deps);
   registerProductRoutes(router, deps);
+  registerLenderPolicyRoutes(router, deps); // P1-04 (Dipanshu)
+  registerLenderPackProfileRoutes(router, deps); // P2-04 (Dipanshu)
   return router;
 }

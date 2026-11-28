@@ -55,6 +55,8 @@ import type {
 import { NotSet } from '../../ui/NotSet';
 import { PRODUCT_CATEGORY_OPTIONS, categoryLabel } from '../products/types';
 import { RowAction } from '../../shell/RowAction';
+import { LenderPoliciesCard } from './LenderPoliciesCard';
+import { LenderPackProfileCard } from './LenderPackProfileCard';
 
 export function LenderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -141,7 +143,7 @@ export function LenderDetailPage() {
         status: editStatus,
         statusReason: editStatus !== 'ACTIVE' ? editStatusReason.trim() : undefined,
       };
-      const updated = await updateLender(lender.id, lender.lockVersion, input);
+      const updated = await updateLender(lender.id, lender.version, input);
       setLender(updated);
       setSuccessMsg('Lender profile updated successfully.');
       setEditProfileOpen(false);
@@ -185,7 +187,7 @@ export function LenderDetailPage() {
   const handleToggleEmpanelmentStatus = async (emp: Empanelment, nextStatus: EmpanelmentStatus) => {
     try {
       setError(null);
-      await updateEmpanelment(emp.id, emp.lockVersion, { status: nextStatus });
+      await updateEmpanelment(emp.id, emp.version, { status: nextStatus });
       setSuccessMsg(`Empanelment ${emp.dsaCode} updated to ${nextStatus}.`);
       await loadLender();
     } catch (err) {
@@ -228,7 +230,7 @@ export function LenderDetailPage() {
     try {
       setSavingContacts(true);
       setContactsError(null);
-      await setLenderContacts(lender.id, lender.lockVersion, {
+      await setLenderContacts(lender.id, lender.version, {
         contacts: contactRows,
       });
       setSuccessMsg('Lender contacts and escalation hierarchy updated.');
@@ -318,11 +320,13 @@ export function LenderDetailPage() {
             <Chip
               label={lender.status}
               size="small"
-              color={lender.status === 'ACTIVE' ? 'success' : lender.status === 'PAUSED' ? 'warning' : 'error'}
+              color={
+                lender.status === 'ACTIVE' ? 'success' : lender.status === 'PAUSED' ? 'warning' : 'error'
+              }
             />
           </Stack>
         }
-        subtitle={`Lock Version: ${lender.lockVersion}`}
+        subtitle={`Version ${lender.version}`}
         actions={
           canManage && (
             <Button variant="outlined" size="small" onClick={() => setEditProfileOpen(true)}>
@@ -364,6 +368,12 @@ export function LenderDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Credit policies (P1-04, Dipanshu) */}
+      <LenderPoliciesCard lenderId={lender.id} lenderOpen={lender.status !== 'TERMINATED'} />
+
+      {/* Document pack profile (P2-04, Dipanshu) */}
+      <LenderPackProfileCard lenderId={lender.id} />
+
       {/* Empanelment Register */}
       <Card sx={{ mb: 4 }}>
         <CardHeader
@@ -401,7 +411,8 @@ export function LenderDetailPage() {
               header: 'Valid Range',
               render: (emp) => (
                 <>
-                  {new Date(emp.validFrom).toLocaleDateString()} — {emp.validTo ? new Date(emp.validTo).toLocaleDateString() : 'Indefinite'}
+                  {new Date(emp.validFrom).toLocaleDateString()} —{' '}
+                  {emp.validTo ? new Date(emp.validTo).toLocaleDateString() : 'Indefinite'}
                 </>
               ),
             },
@@ -416,11 +427,21 @@ export function LenderDetailPage() {
                 </Stack>
               ),
             },
-            { id: 'agreement', header: 'Agreement Ref', render: (emp) => emp.agreementDocumentId || <NotSet /> },
+            {
+              id: 'agreement',
+              header: 'Agreement Ref',
+              render: (emp) => emp.agreementDocumentId || <NotSet />,
+            },
             {
               id: 'status',
               header: 'Status',
-              render: (emp) => <Chip label={emp.status} size="small" color={emp.status === 'ACTIVE' ? 'success' : 'warning'} />,
+              render: (emp) => (
+                <Chip
+                  label={emp.status}
+                  size="small"
+                  color={emp.status === 'ACTIVE' ? 'success' : 'warning'}
+                />
+              ),
             },
             {
               id: 'actions',
@@ -429,12 +450,20 @@ export function LenderDetailPage() {
               render: (emp) => (
                 <>
                   <RowAction allowed={canManage && emp.status === 'ACTIVE'}>
-                    <Button size="small" color="warning" onClick={() => handleToggleEmpanelmentStatus(emp, 'SUSPENDED')}>
+                    <Button
+                      size="small"
+                      color="warning"
+                      onClick={() => handleToggleEmpanelmentStatus(emp, 'SUSPENDED')}
+                    >
                       Suspend
                     </Button>
                   </RowAction>
                   <RowAction allowed={canManage && emp.status === 'SUSPENDED'}>
-                    <Button size="small" color="success" onClick={() => handleToggleEmpanelmentStatus(emp, 'ACTIVE')}>
+                    <Button
+                      size="small"
+                      color="success"
+                      onClick={() => handleToggleEmpanelmentStatus(emp, 'ACTIVE')}
+                    >
                       Reactivate
                     </Button>
                   </RowAction>
@@ -635,7 +664,11 @@ export function LenderDetailPage() {
           )}
           <Stack spacing={2} sx={{ mt: 1 }}>
             {contactRows.map((row, index) => (
-              <Paper key={`contact-row-${index}-${row.email || row.name || index}`} sx={{ p: 2, bgcolor: 'grey.50' }} variant="outlined">
+              <Paper
+                key={`contact-row-${index}-${row.email || row.name || index}`}
+                sx={{ p: 2, bgcolor: 'grey.50' }}
+                variant="outlined"
+              >
                 <Grid container spacing={2} alignItems="center">
                   <Grid item xs={12} sm={3}>
                     <TextField

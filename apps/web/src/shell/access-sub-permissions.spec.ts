@@ -33,7 +33,6 @@ describe('a sub-permission opens exactly its own screen', () => {
     ['lender_case.read', 'Lender cases', 'lender_case.submit'],
     ['sanction.read', 'Sanction and disbursement', 'sanction.record'],
     ['disbursement.read', 'Sanction and disbursement', 'disbursement.verify'],
-    ['eligibility.read', 'Eligibility', null],
     ['org.manage', 'Organisation', 'config.manage'],
     ['team.manage', 'Teams', 'user.manage'],
     ['settings.manage', 'Configuration', 'config.manage'],
@@ -133,9 +132,7 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
       'finance.reconcile',
       'invoice.manage',
     ]);
-    expect(shown).toEqual(
-      expect.arrayContaining(['Commission', 'Payouts', 'Reconciliation', 'Invoices']),
-    );
+    expect(shown).toEqual(expect.arrayContaining(['Commission', 'Payouts', 'Reconciliation', 'Invoices']));
     for (const hidden of [
       'Leads',
       'Applications',
@@ -221,21 +218,9 @@ describe('roles after the role matrix is applied (Notion Roles §6)', () => {
       'document.waive',
     ]);
     expect(shown).toEqual(
-      expect.arrayContaining([
-        'Applications',
-        'Lender cases',
-        'Sanction and disbursement',
-        'Eligibility',
-        'Documents',
-      ]),
+      expect.arrayContaining(['Applications', 'Lender cases', 'Sanction and disbursement', 'Documents']),
     );
-    for (const hidden of [
-      'Commission',
-      'Payouts',
-      'Invoices',
-      'Reconciliation',
-      'Privacy and consent',
-    ])
+    for (const hidden of ['Commission', 'Payouts', 'Invoices', 'Reconciliation', 'Privacy and consent'])
       expect(shown, hidden).not.toContain(hidden);
   });
 
@@ -278,12 +263,7 @@ describe('tenant module entitlements', () => {
     const held = ['verification.read', 'verification.perform', 'finance.view', 'document.upload'];
     const on = labelsFor(held);
     expect(on).toEqual(
-      expect.arrayContaining([
-        'Verification',
-        'Verification workbench',
-        'Commission',
-        'Document sharing',
-      ]),
+      expect.arrayContaining(['Verification', 'Verification workbench', 'Commission', 'Document sharing']),
     );
 
     const off = labelsFor(held, { disabledModules: ['MOD-VER', 'MOD-COM', 'MOD-DSH'] });

@@ -8,6 +8,8 @@ import { registerChecklistRoutes } from './checklist';
 import { registerCollateralRoutes } from './collateral';
 import { registerDocumentRoutes } from './documents';
 import { registerEligibilityRoutes } from './eligibility';
+import { registerLenderMatchRoutes } from './lender-matches';
+import { registerLenderPackRoutes } from './lender-pack';
 import { registerPartyRoutes } from './parties';
 import { registerStatusLinkRoutes } from './status-link';
 import { registerTransitionRoutes } from './transitions';
@@ -19,6 +21,8 @@ export function createRouter(deps: ApiDeps): Router {
   registerApplicationRoutes(router, deps);
   registerTransitionRoutes(router, deps);
   registerEligibilityRoutes(router, deps);
+  registerLenderMatchRoutes(router, deps); // P1-04 (Dipanshu)
+  registerLenderPackRoutes(router, deps); // P2-04 (Dipanshu)
   registerChecklistRoutes(router, deps);
   registerDocumentRoutes(router, deps);
   registerStatusLinkRoutes(router, deps);

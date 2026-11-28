@@ -1,6 +1,11 @@
 import { apiFetch } from '../../api/client';
 import type {
   CalculateCommissionInput,
+  CommissionPlanSlab,
+  CreateCommissionPlanSlabInput,
+  SlabPreviewInput,
+  SlabPreviewResponse,
+  UpdateCommissionPlanSlabInput,
   CommissionCalculation,
   CommissionPayable,
   CommissionPlan,
@@ -129,4 +134,48 @@ export async function approveRecalculationProposal(
     method: 'POST',
     body: { comment: comment ?? 'Approved by checker' },
   });
+}
+
+// ============================================================
+// P2-01: the lender's payout grid (commission plan slabs)
+// ============================================================
+
+export async function fetchCommissionPlanSlabs(
+  planId: string,
+): Promise<{ data: CommissionPlanSlab[]; meta: { nextCursor: string | null; limit: number } }> {
+  return apiFetch(`/v1/commission-plans/${encodeURIComponent(planId)}/slabs`);
+}
+
+export async function createCommissionPlanSlab(
+  planId: string,
+  input: CreateCommissionPlanSlabInput,
+): Promise<CommissionPlanSlab> {
+  return apiFetch<CommissionPlanSlab>(`/v1/commission-plans/${encodeURIComponent(planId)}/slabs`, {
+    method: 'POST',
+    body: input,
+  });
+}
+
+/** `version` is the band's lockVersion: the API sends it as an ETag and requires it back as If-Match. */
+export async function updateCommissionPlanSlab(
+  planId: string,
+  slabId: string,
+  version: number,
+  input: UpdateCommissionPlanSlabInput,
+): Promise<CommissionPlanSlab> {
+  return apiFetch<CommissionPlanSlab>(
+    `/v1/commission-plans/${encodeURIComponent(planId)}/slabs/${encodeURIComponent(slabId)}`,
+    { method: 'PATCH', version, body: input },
+  );
+}
+
+/** Reads nothing and writes nothing: it answers "this volume, this product, this date -> this rate". */
+export async function previewCommissionSlab(
+  planId: string,
+  input: SlabPreviewInput,
+): Promise<SlabPreviewResponse> {
+  return apiFetch<SlabPreviewResponse>(
+    `/v1/commission-plans/${encodeURIComponent(planId)}/slabs/preview`,
+    { method: 'POST', body: input },
+  );
 }

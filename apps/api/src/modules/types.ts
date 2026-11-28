@@ -4,6 +4,8 @@ import type {
   CommissionPort,
   ComplaintSubjectPort,
   LenderPort,
+  LenderPolicyPort,
+  LenderCasePackagePort,
   ProductVersionPort,
   Authz,
   Clock,
@@ -41,6 +43,13 @@ export interface ApiDeps {
   productVersionPort?: ProductVersionPort;
   /** Confirms a lender exists in the tenant, for complaint referrals. Provided by origination/catalogue. */
   lenderPort?: LenderPort;
+  /** The ACTIVE lender policies a match run evaluates (P1-04). Provided by origination/catalogue; matching fails closed without it. */
+  lenderPolicyPort?: LenderPolicyPort;
+  /** A lender case's current submission package, for the pack download (P2-04). Provided by origination/lender-cases; the
+   *  download is refused (503) without it. */
+  lenderCasePackagePort?: LenderCasePackagePort;
+  /** Where files uploaded through a customer upload link are kept (document-sharing). The pack download reads them through it. */
+  customerUploadStore?: { get(tenantId: string, storagePath: string): Promise<Buffer | null> };
   /** Runs provider KYC checks (PAN, GST) for POST /v1/verifications/checks. Provided by integrations. Fails closed (503) without it. */
   kycPort?: KycCheckPort;
   taskPort?: TaskPort;

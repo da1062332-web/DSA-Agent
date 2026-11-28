@@ -29,6 +29,7 @@ import { OwnersCard, PartiesCard } from './ApplicationFileCards';
 import { CollateralCard } from './CollateralCard';
 import { StatusLinkCard } from './StatusLinkCard';
 import { EligibilityCard } from './EligibilityCard';
+import { LenderMatchesCard } from './LenderMatchesCard';
 import { CustomerName, BranchName, UserName } from '../../shell/display';
 import { AppButton, AppCard, FieldGrid } from '../../ui';
 import {
@@ -114,6 +115,7 @@ export function ApplicationDetailPage() {
         updatedAt={a.updatedAt}
         status={a.status}
       />
+      <LenderMatchesCard applicationId={a.id} productCategory={a.productCategory} />
       <ChecklistCard applicationId={a.id} />
 
       <div data-slot="application.lender-cases">

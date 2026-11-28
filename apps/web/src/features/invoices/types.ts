@@ -26,6 +26,8 @@ export interface InvoiceRecord {
   taxFields: TaxFields;
   status: InvoiceStatus;
   calculationIds: string[];
+  /** P2-01: the month a commission invoice covers (YYYY-MM). null on a hand-recorded invoice. */
+  periodMonth?: string | null;
   partyId: string;
   partyName: string | null;
   notes: string | null;
@@ -78,4 +80,10 @@ export interface ConnectorStatement {
   netChange: number;
   closingBalance: number;
   entries: ConnectorStatementLine[];
+}
+
+/** P2-01: the month's commission invoice to one lender, built from the earned calculations. */
+export interface GenerateLenderInvoiceInput {
+  lenderId: string;
+  month: string;
 }

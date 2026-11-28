@@ -23,6 +23,7 @@ export * from './sanction';
 export * from './lenders';
 export * from './products';
 export * from './lender-policy'; // P1-04 (Dipanshu)
+export * from './lender-pack'; // P2-04 (Dipanshu)
 export * from './commission';
 export * from './payouts';
 export * from './reconciliation';
@@ -50,6 +51,8 @@ export type * from './ports/application-port';
 export type * from './ports/complaint-subject-port';
 export type * from './ports/product-version-port';
 export type * from './ports/lender-port';
+export type * from './ports/lender-policy-port'; // P1-04 (Dipanshu)
+export type * from './ports/lender-case-package-port'; // P2-04 (Dipanshu)
 export type * from './ports/commission-port';
 export type * from './ports/kyc-port';
 export * from './s3-text';

@@ -305,4 +305,221 @@ test.describe('Persona 13: Finance & Payout Management (ROLE-FINANCE-EXEC & ROLE
     await commissionPage.pause(2500);
     await authPage.logout();
   });
+
+  // =========================================================================
+  // TC-FIN-05 (P2-01 / TASK-141): the lender's payout grid — add a volume band and check what it would pay.
+  // The Finance Executive holds commission.plan.edit, so the grid is editable while the plan is DRAFT.
+  // =========================================================================
+  test('TC-FIN-05: Finance Executive adds a commission slab band and previews the rate it would pay', async ({
+    page,
+  }) => {
+    const authPage = new AuthPage(page);
+    const commissionPage = new CommissionPage(page);
+
+    const draftPlan = {
+      id: 'cpl_slab_demo_01',
+      tenantId: 'ten_01',
+      lenderId: 'lnd_hdfc',
+      qualifyingEvent: 'DISBURSEMENT',
+      basis: 'DISBURSED_AMOUNT',
+      roundingMode: 'HALF_UP',
+      clawbackWindowDays: 90,
+      ruleSetId: null,
+      taxTreatment: 'FORWARD_CHARGE',
+      gstRateBps: 1800,
+      tdsRateBps: 200,
+      status: 'DRAFT',
+      approvedBy: null,
+      approvedAt: null,
+      lockVersion: 1,
+      createdAt: new Date().toISOString(),
+      createdBy: PERSONAS.financeExec.userId,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // The band already on the plan: the entry tier, 0 to 5L at 1.00%.
+    const existingSlab = {
+      id: 'cslb_demo_01',
+      planId: draftPlan.id,
+      productCategory: 'PL',
+      volumeFrom: '0',
+      volumeTo: '500000.00',
+      rateBps: 100,
+      flatAmount: null,
+      effectiveFrom: '2026-04-01',
+      effectiveTo: null,
+      lockVersion: 1,
+      createdAt: new Date().toISOString(),
+      createdBy: PERSONAS.financeExec.userId,
+    };
+
+    const slabPosts: Array<Record<string, unknown>> = [];
+    let slabList = [existingSlab];
+
+    await page.route('**/v1/commission-calculations**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { total: 0 } }) });
+    });
+    await page.route('**/v1/commission-payables**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], meta: { total: 0 } }) });
+    });
+    await page.route('**/v1/recalculation-proposals**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [] }) });
+    });
+    await page.route('**/v1/lenders**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ id: 'lnd_hdfc', name: 'HDFC Bank', active: true }] }),
+      });
+    });
+
+    // Every /v1 route below is registered AFTER loginAs on purpose. Playwright keeps routes newest-first
+    // (_routes.unshift), and setupPersonaSession — which loginAs calls — installs its own
+    // '**/v1/commission-plans**' stub returning an empty list. Registered earlier, these would lose to it.
+    await authPage.loginAs(PERSONAS.financeExec, '/commission');
+
+    await page.route('**/v1/commission-plans*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [draftPlan], meta: { nextCursor: null, limit: 1 } }),
+      });
+    });
+
+    // After the plans route, so these claim the '/slabs' calls before the broader pattern can.
+    await page.route('**/v1/commission-plans/*/slabs', async (route) => {
+      if (route.request().method() === 'POST') {
+        const body = route.request().postDataJSON() as Record<string, unknown>;
+        slabPosts.push(body);
+        const created = {
+          ...existingSlab,
+          id: 'cslb_demo_02',
+          volumeFrom: '500000.00',
+          volumeTo: null,
+          rateBps: body.rateBps as number,
+        };
+        slabList = [existingSlab, created];
+        await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(created) });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: slabList, meta: { nextCursor: null, limit: slabList.length } }),
+      });
+    });
+
+    await page.route('**/v1/commission-plans/*/slabs/preview', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          slabId: 'cslb_demo_02',
+          rateBps: 125,
+          flatAmount: null,
+          grossAmount: '12500.00',
+          currency: 'INR',
+          matched: true,
+        }),
+      });
+    });
+
+    // The screen already loaded against the helper's empty stub; reload so it fetches through the routes above.
+    await page.reload();
+    await expect(page.getByText('Commission Management Hub')).toBeVisible();
+
+    // 1. Open the grid for the draft plan
+    await commissionPage.showBanner('Lender Payout Grid', 'Volume bands decide the rate a tranche is priced at');
+    await commissionPage.openSlabTab();
+    await commissionPage.selectSlabPlan('HDFC Bank');
+    await expect(page.getByText('₹0 – ₹5,00,000')).toBeVisible();
+
+    // 2. Add the open-ended top band at 1.25%
+    await commissionPage.showBanner('Adding the Top Band', '₹5,00,000 and above at 1.25%');
+    await commissionPage.addSlabBand({ volumeFrom: '500000', volumeTo: '', ratePercent: '1.25' });
+
+    // The rate is typed as a percentage and must reach the API as basis points: 1.25% is 125 bps, never 1.25.
+    expect(slabPosts).toHaveLength(1);
+    expect(slabPosts[0]).toMatchObject({ productCategory: 'PL', rateBps: 125, volumeTo: null });
+    await expect(page.getByText('₹5,00,000 and above')).toBeVisible();
+
+    // 3. Ask the grid what a month at 10L would pay
+    await commissionPage.showBanner('Checking the Grid', '₹10,00,000 in PL this month');
+    await commissionPage.previewSlab('1000000');
+    const preview = page.getByTestId('commission.slab-preview-result');
+    await expect(preview).toContainText('1.25%');
+    await expect(preview).toContainText('₹12,500');
+    await commissionPage.pause(2000);
+    await authPage.logout();
+  });
+
+  // =========================================================================
+  // TC-FIN-06 (P2-01 / TASK-141): the month's commission invoice to one lender. The browser sends only the
+  // lender and the month — the amount, the tax and the serial number are the API's to decide.
+  // =========================================================================
+  test('TC-FIN-06: Finance Executive generates the monthly lender commission invoice', async ({ page }) => {
+    const authPage = new AuthPage(page);
+    const commissionPage = new CommissionPage(page);
+
+    const generatePosts: Array<Record<string, unknown>> = [];
+    await page.route('**/v1/invoices/lender-commission', async (route) => {
+      generatePosts.push(route.request().postDataJSON() as Record<string, unknown>);
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'inv_demo_01',
+          tenantId: 'ten_01',
+          direction: 'TO_LENDER',
+          number: 'CI/26-27/000123',
+          date: '2026-11-30',
+          dueDate: null,
+          amount: 118000,
+          currency: 'INR',
+          taxFields: { gstRate: 0.18, gstAmount: 18000 },
+          status: 'DRAFT',
+          calculationIds: ['ccal_01', 'ccal_02'],
+          periodMonth: '2026-11',
+          partyId: 'lnd_hdfc',
+          partyName: 'HDFC Bank',
+          notes: null,
+          lockVersion: 1,
+          createdAt: new Date().toISOString(),
+          createdBy: PERSONAS.financeExec.userId,
+          updatedAt: new Date().toISOString(),
+          updatedBy: PERSONAS.financeExec.userId,
+        }),
+      });
+    });
+
+    await page.route('**/v1/invoices?**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [], nextCursor: null }),
+      });
+    });
+    await page.route('**/v1/lenders**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: [{ id: 'lnd_hdfc', name: 'HDFC Bank', active: true, status: 'ACTIVE' }] }),
+      });
+    });
+
+    await authPage.loginAs(PERSONAS.financeExec, '/invoices');
+    await expect(page.getByText('Invoices & Statements')).toBeVisible();
+
+    await commissionPage.showBanner('Billing the Lender', "One invoice for the month's earned commission");
+    await commissionPage.click(page.getByTestId('invoices.generate-lender-invoice'));
+    await commissionPage.selectLenderForInvoice('HDFC Bank');
+    await page.getByTestId('invoices.generate-month').fill('2026-11');
+    await commissionPage.click(page.getByTestId('invoices.generate-submit'), 1800);
+
+    expect(generatePosts).toEqual([{ lenderId: 'lnd_hdfc', month: '2026-11' }]);
+    // The serial is what the lender and the GST return will both quote, so the confirmation leads with it.
+    await expect(page.getByText('CI/26-27/000123')).toBeVisible();
+    await commissionPage.pause(2000);
+    await authPage.logout();
+  });
 });

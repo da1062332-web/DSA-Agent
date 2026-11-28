@@ -8,6 +8,9 @@ import {
   CancelPayoutRequestInputSchema,
   CreateClawbackInputSchema,
   CreateCommissionPlanInputSchema,
+  CreateCommissionPlanSlabInputSchema,
+  SlabPreviewInputSchema,
+  UpdateCommissionPlanSlabInputSchema,
   CreatePayoutBatchInputSchema,
   CreatePayoutRequestInputSchema,
   CreateRecalculationProposalInputSchema,
@@ -135,6 +138,80 @@ export function createRouter(deps: ApiDeps): Router {
 
       const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
         return service.updateCommissionPlan(tx, ctx, id, lockVersion, parsed.data);
+      });
+      res.setHeader('ETag', `"${result.lockVersion}"`);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ==========================================
+  // P2-01: the lender's payout grid (commission plan slabs).
+  // Registered before /commission-plans/:id so "…/slabs" is never read as a plan id.
+  // ==========================================
+
+  // POST /v1/commission-plans/:planId/slabs
+  router.post('/commission-plans/:planId/slabs', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      const planId = extractParam(req.params.planId, 'planId');
+      const parsed = CreateCommissionPlanSlabInputSchema.safeParse(req.body);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.createCommissionPlanSlab(tx, ctx, planId, parsed.data);
+      });
+      res.setHeader('ETag', `"${result.lockVersion}"`);
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /v1/commission-plans/:planId/slabs
+  router.get('/commission-plans/:planId/slabs', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      const planId = extractParam(req.params.planId, 'planId');
+      const data = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.listCommissionPlanSlabs(tx, ctx, planId);
+      });
+      res.json({ data, meta: { nextCursor: null, limit: data.length } });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /v1/commission-plans/:planId/slabs/preview — "10,00,000 in PL this month -> 1.20% -> 12,000"
+  router.post('/commission-plans/:planId/slabs/preview', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      const planId = extractParam(req.params.planId, 'planId');
+      const parsed = SlabPreviewInputSchema.safeParse(req.body);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.previewCommissionSlab(tx, ctx, planId, parsed.data);
+      });
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PATCH /v1/commission-plans/:planId/slabs/:slabId
+  router.patch('/commission-plans/:planId/slabs/:slabId', async (req: Request, res: Response, next) => {
+    try {
+      const ctx = getRequestContext(req);
+      const planId = extractParam(req.params.planId, 'planId');
+      const slabId = extractParam(req.params.slabId, 'slabId');
+      const lockVersion = extractIfMatch(req);
+      const parsed = UpdateCommissionPlanSlabInputSchema.safeParse(req.body);
+      if (!parsed.success) handleZodError(parsed.error);
+
+      const result = await deps.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+        return service.updateCommissionPlanSlab(tx, ctx, planId, slabId, lockVersion, parsed.data);
       });
       res.setHeader('ETag', `"${result.lockVersion}"`);
       res.json(result);

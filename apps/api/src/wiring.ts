@@ -23,7 +23,10 @@ import { createApplicationPort } from './modules/origination/applications/applic
 import { createCommissionPort } from './modules/finance/commission-port';
 import { createApplicationSubjectPort } from './modules/origination/applications/subject-port';
 import { createLenderPort } from './modules/origination/catalogue/lender-port';
+import { createLenderPolicyPort } from './modules/origination/catalogue/lender-policy-port';
 import { createProductVersionPort } from './modules/origination/catalogue/product-version-port';
+import { LocalDocumentStorage } from './modules/origination/document-sharing/storage-port';
+import { createLenderCasePackagePort } from './modules/origination/lender-cases/package-port';
 import { createWebhookOutboxSubscriber } from './modules/partner-api/webhooks';
 import { globalJobQueue } from './modules/platform/job-queue';
 import type { OutboxSubscriber } from './modules/platform/outbox-relay';
@@ -75,6 +78,12 @@ export function createProductionDeps(
     productVersionPort: createProductVersionPort(),
     // Complaint referrals confirm the lender exists through this port; without it every referral is refused (503).
     lenderPort: createLenderPort(),
+    // Lender matching (P1-04) loads the ACTIVE policies through this port; without it a match run is refused (503).
+    lenderPolicyPort: createLenderPolicyPort(),
+    // The lender pack download (P2-04) reads the case's frozen package through this port; without it the download is refused (503).
+    lenderCasePackagePort: createLenderCasePackagePort(),
+    // Customer upload-link files, read by the pack download. The same local store the document-sharing service writes to.
+    customerUploadStore: new LocalDocumentStorage(),
     // PAN and GST checks (POST /v1/verifications/checks) run through this port; without it they fail closed (503).
     kycPort: createKycCheckPort({ registry: new IntegrationRegistry() }),
     dataSharingPort: new PostgresDataSharingPort(),
