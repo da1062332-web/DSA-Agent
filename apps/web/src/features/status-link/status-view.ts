@@ -10,14 +10,38 @@ export interface PublicStatusProgress {
   closed: boolean;
 }
 
-/** The view the public status endpoint returns. It carries nothing that names the customer or the application. */
+/** A mandatory document the customer still has to send or fix. The API words the status; the page only shows it. */
+export interface PendingDocument {
+  name: string;
+  status: 'PENDING' | 'REJECTED' | 'EXPIRED';
+  label: string;
+}
+
+/** The application details a customer uses to identify the file. None of them is the internal application id. */
+export interface PublicApplicationDetails {
+  /** A reference the customer can quote, such as DSA-7K2MQ-9XHTR. */
+  reference: string;
+  loanType: string;
+  /** YYYY-MM-DD, the day the application was created. */
+  appliedOn: string;
+}
+
+/** The view the public status endpoint returns. It carries nothing that names the customer or the internal application. */
 export interface PublicStatusView {
+  application: PublicApplicationDetails;
   stage: string;
   progress: PublicStatusProgress;
-  pendingDocuments: string[];
-  /** The date of the last change to the application, YYYY-MM-DD. */
+  pendingDocuments: PendingDocument[];
+  /** The date of the last change to the application or its checklist, YYYY-MM-DD. */
   lastUpdated: string;
   expiresAt: string;
+}
+
+/** "3 Nov 2026" for a YYYY-MM-DD day. An unreadable day gives null rather than a wrong date. */
+export function dayLabel(day: string): string | null {
+  const date = new Date(`${day}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export type ProgressState = 'completed' | 'current' | 'upcoming';

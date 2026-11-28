@@ -1,5 +1,6 @@
-// The customer status page: the acceptance view, the progress, the pending documents and the privacy of the rendered text (task P3-05,
-// TEST-STATUS-UI-02). The rendered HTML is checked with the style block removed, so only the words on the page are read.
+// The customer status page: the application details, the stage, the progress, the pending documents with their own labels, and the privacy
+// of the rendered text (task P3-05, TEST-STATUS-UI-02). The rendered HTML is checked with the style block removed, so only the words on
+// the page are read.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -30,17 +31,22 @@ function pageText(html: string): string {
 }
 
 const processing: PublicStatusView = {
+  application: { reference: 'DSA-7K2MQ-9XHTR', loanType: 'Home loan', appliedOn: '2026-11-03' },
   stage: 'Under processing',
   progress: { steps: STEPS, currentIndex: 1, closed: false },
-  pendingDocuments: ['Salary slip'],
+  pendingDocuments: [{ name: 'Salary slip', status: 'PENDING', label: 'Pending' }],
   lastUpdated: '2026-11-26',
   expiresAt: '2026-12-03T00:00:00.000Z',
 };
 
 describe('TEST-STATUS-UI-02 the customer status page', () => {
-  it('TEST-STATUS-UI-02 the acceptance view: the stage, the progress, the pending salary slip and the last update', () => {
+  it('TEST-STATUS-UI-02 the acceptance view: the reference, the loan type, the stage, the pending salary slip and the last update', () => {
     const html = render(processing);
     expect(html).toContain('Your Application Status');
+    expect(html).toContain('Application details');
+    expect(html).toContain('DSA-7K2MQ-9XHTR');
+    expect(html).toContain('Home loan');
+    expect(html).toContain('3 Nov 2026');
     expect(html).toContain('data-testid="status.stage"');
     expect(html).toContain('Under processing');
     expect(html).toContain('Application progress');
@@ -49,18 +55,35 @@ describe('TEST-STATUS-UI-02 the customer status page', () => {
     expect(html).toContain('Last updated 26 Nov 2026');
   });
 
-  it('TEST-STATUS-UI-02 the progress marks the step reached, completes the one before it, and leaves the rest upcoming', () => {
-    const html = render({ ...processing, progress: { steps: STEPS, currentIndex: 2, closed: false } });
-    expect(html.match(/aria-current="step"/g)).toHaveLength(1);
-    expect(html).toContain('Under review');
-    expect(html).toContain('data-testid="status.progress"');
+  it('TEST-STATUS-UI-02 each pending document shows the label the API gave it, and its own tone', () => {
+    const html = render({
+      ...processing,
+      pendingDocuments: [
+        { name: 'Bank statement', status: 'REJECTED', label: 'Resubmit required' },
+        { name: 'Income proof (Co-applicant)', status: 'EXPIRED', label: 'Renewal required' },
+        { name: 'PAN card', status: 'PENDING', label: 'Pending' },
+      ],
+    });
+    expect(html).toContain('Resubmit required');
+    expect(html).toContain('Renewal required');
+    expect(html).toContain('Income proof (Co-applicant)');
+    expect(html.match(/data-status="REJECTED"/g)).toHaveLength(1);
+    expect(html.match(/data-status="EXPIRED"/g)).toHaveLength(1);
+    expect(html.match(/data-status="PENDING"/g)).toHaveLength(1);
   });
 
-  it('TEST-STATUS-UI-02 a closed application shows Closed, and draws no progress steps', () => {
-    const html = render({ ...processing, stage: 'Closed', progress: { steps: STEPS, currentIndex: null, closed: true } });
-    expect(html).toContain('Closed');
-    expect(html).not.toContain('data-testid="status.progress"');
-    expect(html).not.toContain('aria-current="step"');
+  it('TEST-STATUS-UI-02 the progress marks the step reached, and a closed application shows Closed with no steps', () => {
+    const html = render({ ...processing, progress: { steps: STEPS, currentIndex: 2, closed: false } });
+    expect(html.match(/aria-current="step"/g)).toHaveLength(1);
+    expect(html).toContain('data-testid="status.progress"');
+
+    const closed = render({
+      ...processing,
+      stage: 'Closed',
+      progress: { steps: STEPS, currentIndex: null, closed: true },
+    });
+    expect(closed).toContain('Closed');
+    expect(closed).not.toContain('data-testid="status.progress"');
   });
 
   it('TEST-STATUS-UI-02 with no pending documents the page says so, and shows no Pending list', () => {
@@ -76,7 +99,7 @@ describe('TEST-STATUS-UI-02 the customer status page', () => {
     expect(text).toContain('For assistance, please contact your relationship manager.');
   });
 
-  it('TEST-STATUS-UI-02 shows nothing that names the customer or the application, and no technical identifiers', () => {
+  it('TEST-STATUS-UI-02 shows nothing that names the customer or the internal application, and no technical identifiers', () => {
     const text = pageText(render(processing));
     expect(text).not.toMatch(/\b(mobile|email|PAN|Aadhaar|DOB|amount|app_|cust_|tok_)\b/i);
     expect(text).not.toMatch(/\b\d{9,}\b/);

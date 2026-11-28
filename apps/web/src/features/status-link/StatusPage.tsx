@@ -1,6 +1,7 @@
 // The customer's status page at /status/:token (task P3-05, checklist 6.4). No sign-in, no sidebar and no internal navigation. It shows the
-// stage, the progress along the customer's path, the documents still needed and the date of the last update. It shows nothing that names
-// the customer or the application: the API returns only those fields.
+// application details the customer uses to identify the file, the stage, the progress along the customer's path, the mandatory documents
+// still needed, and the date of the last change. It shows nothing that names the customer or the internal application: the API returns
+// only those fields.
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
@@ -15,11 +16,14 @@ import {
   LockIcon,
 } from '../../shell/icons';
 import {
+  dayLabel,
   progressSteps,
   STATUS_ERROR_COPY,
   statusErrorKind,
   updatedLine,
+  type PendingDocument,
   type ProgressStep,
+  type PublicApplicationDetails,
   type PublicStatusView,
   type StatusErrorKind,
 } from './status-view';
@@ -28,8 +32,6 @@ const NAVY = '#215988';
 const NAVY_DARK = '#174368';
 const NAVY_TINT = '#EEF4FA';
 const GREEN = '#15803D';
-const AMBER_TINT = '#FEF3C7';
-const AMBER_TEXT = '#92400E';
 const BORDER = '#E2E8F0';
 
 /** A card on the white canvas: a 1px border and a faint shadow, with a modest radius. */
@@ -51,6 +53,13 @@ const entranceSx = {
     to: { opacity: 1, transform: 'none' },
   },
   '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+};
+
+/** How each pending status is shown. Waiting is amber; anything the customer must resend or renew is red. */
+const PENDING_TONE: Record<PendingDocument['status'], { bg: string; color: string }> = {
+  PENDING: { bg: '#FEF3C7', color: '#92400E' },
+  REJECTED: { bg: '#FEE2E2', color: '#991B1B' },
+  EXPIRED: { bg: '#FEE2E2', color: '#991B1B' },
 };
 
 export function StatusPage() {
@@ -125,10 +134,38 @@ function StatusContent({ view }: { view: PublicStatusView }) {
   const steps = progressSteps(view.progress);
   return (
     <Stack spacing={2} sx={{ mt: 2.5, ...entranceSx }}>
+      <ApplicationCard details={view.application} />
       <StageCard view={view} />
       {steps.length > 0 && <ProgressCard steps={steps} />}
       <PendingCard documents={view.pendingDocuments} />
     </Stack>
+  );
+}
+
+function ApplicationCard({ details }: { details: PublicApplicationDetails }) {
+  const applied = dayLabel(details.appliedOn) ?? '—';
+  const item = (label: string, value: string, testId: string) => (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ fontSize: 12, color: '#64748B', fontWeight: 500, letterSpacing: 0.2 }}>{label}</Typography>
+      <Typography
+        data-testid={testId}
+        sx={{ mt: 0.25, fontSize: 15, fontWeight: 600, color: '#0F172A', overflowWrap: 'anywhere', lineHeight: 1.35 }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  );
+  return (
+    <Box sx={cardSx} data-testid="status.application">
+      <Typography component="h2" sx={{ fontSize: 16, fontWeight: 600, color: '#0F172A', mb: 2 }}>
+        Application details
+      </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
+        {item('Application reference', details.reference, 'status.reference')}
+        {item('Loan type', details.loanType, 'status.loan-type')}
+        {item('Applied on', applied, 'status.applied-on')}
+      </Box>
+    </Box>
   );
 }
 
@@ -255,7 +292,7 @@ function ProgressRow({ step, isLast }: { step: ProgressStep; isLast: boolean }) 
   );
 }
 
-function PendingCard({ documents }: { documents: string[] }) {
+function PendingCard({ documents }: { documents: PendingDocument[] }) {
   return (
     <Box sx={cardSx} data-testid="status.pending-card">
       <Typography component="h2" sx={{ fontSize: 16, fontWeight: 600, color: '#0F172A', mb: 1.5 }}>
@@ -268,9 +305,9 @@ function PendingCard({ documents }: { documents: string[] }) {
         </Stack>
       ) : (
         <Stack spacing={1} component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }} data-testid="status.pending">
-          {documents.map((name) => (
+          {documents.map((doc) => (
             <Stack
-              key={name}
+              key={`${doc.name}-${doc.status}`}
               component="li"
               direction="row"
               spacing={1.25}
@@ -279,24 +316,27 @@ function PendingCard({ documents }: { documents: string[] }) {
             >
               <AssignmentIcon sx={{ fontSize: 20, color: '#64748B', flexShrink: 0 }} />
               <Typography sx={{ flex: 1, minWidth: 0, fontSize: 14.5, color: '#0F172A', overflowWrap: 'anywhere' }}>
-                {name}
+                {doc.name}
               </Typography>
               <Box
                 component="span"
+                data-testid="status.pending-badge"
+                data-status={doc.status}
                 sx={{
                   flexShrink: 0,
                   px: 0.9,
                   py: 0.35,
                   borderRadius: '4px',
-                  bgcolor: AMBER_TINT,
-                  color: AMBER_TEXT,
+                  bgcolor: PENDING_TONE[doc.status].bg,
+                  color: PENDING_TONE[doc.status].color,
                   fontSize: 11.5,
                   fontWeight: 700,
                   letterSpacing: 0.3,
                   textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                Pending
+                {doc.label}
               </Box>
             </Stack>
           ))}
