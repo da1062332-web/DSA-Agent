@@ -169,6 +169,9 @@ export const PERMISSION_CODES = [
   'lender_policy.read',
   'lender_policy.manage',
   'lender_match.run',
+  // Added 2026-11-28 (additive; migration M-130, P1-05 credit-bureau soft pull, owner Prathamesh).
+  'credit_report.pull',
+  'credit_report.read',
 ] as const;
 
 export type PermissionCode = (typeof PERMISSION_CODES)[number];

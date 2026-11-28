@@ -232,6 +232,15 @@ export const ROLE_GRANTS_M120: Record<string, string[]> = {
   'ROLE-RM': ['lender_policy.read', 'lender_match.run'],
 };
 
+// What migration M-130 (P1-05 credit-bureau soft pull, owner Prathamesh) grants. Additive; a test compares this list with the migration's
+// rows and with tools/sql/batch/130.verify.sql. Pulling a report needs credit_report.pull; reading the stored summaries needs credit_report.read.
+export const ROLE_GRANTS_M130: Record<string, string[]> = {
+  'ROLE-ORG-OWNER': ['credit_report.pull', 'credit_report.read'],
+  'ROLE-LOAN-OPS': ['credit_report.pull', 'credit_report.read'],
+  'ROLE-BRANCH-MGR': ['credit_report.read'],
+  'ROLE-RM': ['credit_report.read'],
+};
+
 export const ROLE_GRANT_TRIMS: Record<string, string[]> = {
   'ROLE-BRANCH-MGR': [
     'verification.perform',
@@ -312,6 +321,7 @@ export const ROLES: RoleSeed[] = BASE_ROLES.map((r) => ({
       ...withSubPermissionBackfill(r.permissions),
       ...(ROLE_GRANT_FIXES[r.code] ?? []),
       ...(ROLE_GRANTS_M120[r.code] ?? []),
+      ...(ROLE_GRANTS_M130[r.code] ?? []),
     ]),
   ].filter((p) => !(ROLE_GRANT_TRIMS[r.code] ?? []).includes(p)),
 }));

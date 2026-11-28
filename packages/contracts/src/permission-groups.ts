@@ -223,6 +223,11 @@ export const PERMISSION_GROUPS: readonly PermissionModuleGroup[] = [
           'verification.complete',
         ],
       },
+      {
+        id: 'credit-reports',
+        label: 'Credit bureau reports',
+        codes: ['credit_report.pull', 'credit_report.read'],
+      },
     ],
   },
   {
