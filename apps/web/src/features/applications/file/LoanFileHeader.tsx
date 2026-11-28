@@ -185,10 +185,15 @@ export function LoanFileHeader({
         </Fact>
         <Fact label="Category">{app.productCategory}</Fact>
       </Box>
-      <Divider />
-      <Box sx={{ px: { xs: 1, md: 3 }, py: 2 }}>
-        <JourneyStepper state={journey} selected={selectedStage} onSelect={onSelectStage} />
-      </Box>
+      {/* The road is shown only when it drives the page (the steps); the overview says where the file stands in words. */}
+      {onSelectStage && (
+        <>
+          <Divider />
+          <Box sx={{ px: { xs: 1, md: 3 }, py: 2 }}>
+            <JourneyStepper state={journey} selected={selectedStage} onSelect={onSelectStage} />
+          </Box>
+        </>
+      )}
     </Box>
   );
 }

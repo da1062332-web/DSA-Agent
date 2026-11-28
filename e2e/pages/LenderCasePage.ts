@@ -25,8 +25,15 @@ export class LenderCasePage extends BasePage {
   readonly responseTextInput = this.responseDialog.getByLabel(/Response Details/);
   readonly submitResponseBtn = this.responseDialog.getByRole('button', { name: 'Submit Response' });
 
-  /** The loan file shows one stage at a time (2026-11-28 redesign): open the stage that holds the card first. */
+  /**
+   * The loan file opens on its overview; "Continue application" opens the steps, one stage at a time (2026-11-28 redesign). Open
+   * the steps if needed, then the stage that holds the card.
+   */
   async openStage(stage: 'draft' | 'documents' | 'review' | 'ready' | 'lender'): Promise<void> {
+    const continueBtn = this.page.getByTestId('application.continue');
+    // Wait until the page has rendered either mode, so the check below does not race the first load.
+    await continueBtn.or(this.page.getByTestId('application.step-footer')).first().waitFor({ state: 'visible' });
+    if (await continueBtn.isVisible()) await this.click(continueBtn, 600);
     await this.click(this.page.getByTestId(`application.stage-${stage}`), 600);
   }
 

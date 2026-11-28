@@ -1,9 +1,9 @@
 // /applications/:id, the loan file (DSA Notion MODULE 16, API-APP-003, 004, 006, 010, 011; redesigned 2026-11-28 by Bhushan).
-// Laid out like a loan file: a front sheet (loan, borrower, amount) and the road from draft to disbursal. The road drives the page:
-// it opens on the stage the file is at, each stage shows what it is for, a checklist of what it needs, the action that moves the
-// file on, and only that stage's work; any stage can be opened to look back or ahead. People, the customer status link, the status
-// history and the hold sit in a side rail; activity and follow-ups below. Every change sends the version the screen loaded
-// (If-Match), so a stale screen gets the conflict message. The stage is in the address (?stage=documents).
+// Two modes. The overview opens first: a front sheet (loan, borrower, amount, the road from draft to disbursal), a band with
+// "Complete application" / "Continue application", the summary of the file, then the people, the customer status link, the hold,
+// the status history and the activity. "Continue" opens the step-by-step form (?step=documents): each stage is a step with its work,
+// Previous and Save & next, and Save & next validates the step before it saves and moves the file on. Every change sends the version
+// the screen loaded (If-Match), so a stale screen gets the conflict message.
 import {
   Alert,
   Box,
@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { LeadFollowUps } from '../leads/LeadFollowUps';
 import { hasPermission, useMe } from '../../api/useMe';
@@ -26,50 +26,15 @@ import type { Product, ProductVersion } from '../admin/ProductsPage';
 import type { Application } from './ApplicationsPage';
 import { OwnersCard } from './ApplicationFileCards';
 import { StatusLinkCard } from './StatusLinkCard';
-
 import { UserName } from '../../shell/display';
-import { AppButton, FieldGrid } from '../../ui';
-import { APPLICANT_TYPE_LABELS, JOURNEY, humanize, journeyState, selectedStageIndex } from './loan-file';
+import { AppButton } from '../../ui';
+import { JOURNEY, journeyState, selectedStageIndex } from './loan-file';
+import { CompleteApplication } from './file/CompleteApplication';
 import { LoanFileHeader } from './file/LoanFileHeader';
+import { OverviewPanel } from './file/OverviewPanel';
 import { Section } from './file/parts';
-import { StagePanel } from './file/StagePanel';
 import { StatusTimeline, type StatusHistoryEntry } from './file/StatusTimeline';
-import {
-  CLOSABLE,
-  STATUS_LABELS,
-  canEditDetails,
-  canHold,
-  isValidAmount,
-  isValidHoldReason,
-  isValidTenure,
-  isValidTransitionReason,
-} from './rules';
-
-const PURPOSES = [
-  'PERSONAL_NEEDS',
-  'MEDICAL',
-  'EDUCATION',
-  'HOME_PURCHASE',
-  'HOME_IMPROVEMENT',
-  'VEHICLE',
-  'WORKING_CAPITAL',
-  'BUSINESS_EXPANSION',
-  'DEBT_CONSOLIDATION',
-  'OTHER',
-] as const;
-
-const APPLICANT_TYPES = [
-  'SALARIED',
-  'SELF_EMPLOYED_PROFESSIONAL',
-  'SELF_EMPLOYED_BUSINESS',
-  'NON_INDIVIDUAL',
-] as const;
-
-function getAmountString(amt: unknown): string {
-  if (amt == null) return '';
-  if (typeof amt === 'object' && amt !== null) return String((amt as { amount?: unknown }).amount ?? '');
-  return String(amt);
-}
+import { CLOSABLE, canHold, isValidHoldReason, isValidTransitionReason } from './rules';
 
 export function ApplicationDetailPage() {
   const { id } = useParams();
@@ -84,17 +49,31 @@ export function ApplicationDetailPage() {
   const a = app.data;
   const entries = history.data ?? [];
   const journey = journeyState(a.status, entries);
-  const selected = selectedStageIndex(params.get('stage'), journey);
-  const select = (index: number) => {
+  const stepParam = params.get('step');
+  const stepping = stepParam !== null;
+  const stepIndex = selectedStageIndex(stepParam, journey);
+  const openStep = (index: number) => {
     const next = new URLSearchParams(params);
-    if (index === journey.activeIndex) next.delete('stage');
-    else next.set('stage', JOURNEY[index]!.key);
-    setParams(next, { replace: true });
+    next.set('step', JOURNEY[index]!.key);
+    setParams(next);
+    window.scrollTo({ top: 0 });
+  };
+  const openStage = (key: string) =>
+    openStep(
+      Math.max(
+        0,
+        JOURNEY.findIndex((j) => j.key === key),
+      ),
+    );
+  const toOverview = () => {
+    const next = new URLSearchParams(params);
+    next.delete('step');
+    setParams(next);
+    window.scrollTo({ top: 0 });
   };
 
-  return (
-    <Box data-testid="application.file">
-      <LoanFileHeader app={a} journey={journey} selectedStage={selected} onSelectStage={select} />
+  const banners = (
+    <>
       {a.onHold && (
         <Alert severity="warning" sx={{ mb: 2 }} data-testid="application.hold-banner">
           On hold: {a.holdReason ?? 'no reason recorded'}
@@ -106,44 +85,64 @@ export function ApplicationDetailPage() {
           Sent back for rework: {a.reworkReason}
         </Alert>
       )}
+    </>
+  );
+
+  if (stepping) {
+    return (
+      <Box data-testid="application.file">
+        {banners}
+        <CompleteApplication
+          app={a}
+          journey={journey}
+          index={stepIndex}
+          onStep={openStep}
+          onExit={toOverview}
+          otherActions={<TransitionCard app={a} forwardInSteps />}
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <Box data-testid="application.file">
+      <LoanFileHeader app={a} journey={journey} />
+      {banners}
+      <OverviewPanel
+        app={a}
+        journey={journey}
+        onOpen={openStage}
+        onContinue={() => openStep(journey.activeIndex)}
+      />
 
       <Box
+        data-testid="application.details-row"
         sx={{
+          mt: 2.5,
           display: 'grid',
-          gap: 3,
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 320px' },
-          alignItems: 'start',
+          gap: 2.5,
+          gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+          alignItems: 'stretch',
+          // Every card of the row takes the row's height, so their edges line up.
+          '& > *': { height: '100%', m: 0 },
         }}
       >
-        <Box sx={{ minWidth: 0 }}>
-          <StagePanel
-            app={a}
-            journey={journey}
-            index={selected}
-            onSelect={select}
-            nextStep={<TransitionCard app={a} />}
-            loanRequest={<DetailsCard app={a} canEdit={canUpdate && canEditDetails(a.status)} />}
-          />
-          <Box sx={{ mt: 1 }} data-testid="application.activity">
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-              Activity and follow-ups
-            </Typography>
-            <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
-          </Box>
-        </Box>
-
-        <Stack
-          spacing={3}
-          sx={{ position: { lg: 'sticky' }, top: { lg: 88 } }}
-          data-testid="application.rail"
-        >
-          <PeopleCard app={a} />
+        <PeopleCard app={a} />
+        <Box sx={{ display: 'flex', '& > *': { flex: 1, m: 0 } }}>
           <StatusLinkCard applicationId={a.id} />
-          <Section title="Status history" testId="application.activity-history">
-            <StatusTimeline entries={entries} />
-          </Section>
-          <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
-        </Stack>
+        </Box>
+        <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
+      </Box>
+      <Box sx={{ mt: 2.5 }}>
+        <Section title="Status history" testId="application.activity-history">
+          <StatusTimeline entries={entries} />
+        </Section>
+      </Box>
+      <Box sx={{ mt: 3 }} data-testid="application.activity">
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+          Activity and follow-ups
+        </Typography>
+        <LeadFollowUps subjectType="LOAN_APPLICATION" subjectId={a.id} />
       </Box>
     </Box>
   );
@@ -156,6 +155,7 @@ function PeopleCard({ app }: { app: Application }) {
   const canAssign = hasPermission(me.data, 'application.assign');
   return (
     <Section
+      fill
       title="People"
       testId="application.people"
       action={
@@ -215,119 +215,6 @@ function PersonLine({ role, id }: { role: string; id: string | null }) {
   );
 }
 
-function DetailsCard({ app, canEdit }: { app: Application; canEdit: boolean }) {
-  const [amount, setAmount] = useState(() => getAmountString(app.requestedAmount));
-  const [tenure, setTenure] = useState(app.tenureMonths ? String(app.tenureMonths) : '');
-  const [purpose, setPurpose] = useState(app.purposeCode ?? '');
-  const [applicantType, setApplicantType] = useState(app.applicantType);
-  useEffect(() => {
-    setAmount(getAmountString(app.requestedAmount));
-    setTenure(app.tenureMonths ? String(app.tenureMonths) : '');
-    setPurpose(app.purposeCode ?? '');
-    setApplicantType(app.applicantType);
-  }, [app]);
-
-  const save = useCommand<object, Application>(
-    () => ({ path: `/v1/applications/${app.id}`, method: 'PATCH', version: app.version }),
-    [[`/v1/applications/${app.id}`], ['/v1/applications']],
-  );
-  const dirty =
-    amount.trim() !== getAmountString(app.requestedAmount) ||
-    tenure !== (app.tenureMonths ? String(app.tenureMonths) : '') ||
-    (purpose || null) !== app.purposeCode ||
-    applicantType !== app.applicantType;
-  const valid = isValidAmount(amount) && (tenure === '' || isValidTenure(tenure));
-
-  return (
-    <Card sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Loan request
-        </Typography>
-        <ErrorAlert error={save.error} />
-        {!canEditDetails(app.status) && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Details can be edited while the application is Draft or Documents pending. It is{' '}
-            {STATUS_LABELS[app.status]}.
-          </Typography>
-        )}
-        <FieldGrid minColumnWidth={260} spanNonFields>
-          <TextField
-            label="Requested amount (INR)"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            disabled={!canEdit}
-            error={amount !== '' && !isValidAmount(amount)}
-            helperText="Decimal, for example 300000.00"
-            onKeyDown={(e) => {
-              if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
-            }}
-          />
-          <TextField
-            label="Tenure (months)"
-            type="number"
-            value={tenure}
-            onChange={(e) => setTenure(e.target.value)}
-            disabled={!canEdit}
-            error={tenure !== '' && !isValidTenure(tenure)}
-            helperText="1 to 480"
-            inputProps={{ min: 1, max: 480 }}
-            onKeyDown={(e) => {
-              if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
-            }}
-          />
-          <TextField
-            select
-            label="Purpose"
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
-            disabled={!canEdit}
-          >
-            <MenuItem value="">Not set</MenuItem>
-            {PURPOSES.map((p) => (
-              <MenuItem key={p} value={p}>
-                {humanize(p)}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Applicant type"
-            value={applicantType}
-            onChange={(e) => setApplicantType(e.target.value as Application['applicantType'])}
-            disabled={!canEdit}
-          >
-            {APPLICANT_TYPES.map((t) => (
-              <MenuItem key={t} value={t}>
-                {APPLICANT_TYPE_LABELS[t] ?? humanize(t)}
-              </MenuItem>
-            ))}
-          </TextField>
-          {canEdit && (
-            <Stack direction="row" justifyContent="flex-end">
-              <AppButton
-                variant="primary"
-                loading={save.isPending}
-                disabled={!dirty || !valid}
-                onClick={() =>
-                  save.mutate({
-                    requestedAmount: amount.trim(),
-                    tenureMonths: tenure === '' ? undefined : Number(tenure),
-                    purposeCode: purpose || null,
-                    applicantType,
-                  })
-                }
-              >
-                Save details
-              </AppButton>
-            </Stack>
-          )}
-        </FieldGrid>
-      </CardContent>
-    </Card>
-  );
-}
-
 function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }) {
   const [reason, setReason] = useState('');
   const [until, setUntil] = useState('');
@@ -338,7 +225,7 @@ function HoldCard({ app, canHoldNow }: { app: Application; canHoldNow: boolean }
 
   if (!canHoldNow) return null;
   return (
-    <Section title="Hold" testId="application.hold">
+    <Section fill title="Hold" testId="application.hold">
       <ErrorAlert error={hold.error} />
       {app.onHold ? (
         <Stack spacing={1.5}>
@@ -418,7 +305,14 @@ function StepRow({ children, action }: { children: ReactNode; action: ReactNode 
  *  (send back for rework), T-APP-04 (ready), T-APP-05 (send back to review), T-APP-07 (close), T-APP-08 (withdraw), T-APP-09
  *  (reopen) and T-APP-10 (cancel). Only the steps the caller's permissions and the current status allow are shown. The API
  *  re-checks all of it. */
-export function TransitionCard({ app }: { app: Application }) {
+export function TransitionCard({
+  app,
+  forwardInSteps = false,
+}: {
+  app: Application;
+  /** In the step form "Save & next" moves the file forward (T-APP-01, 02, 04); this card then shows only the other actions. */
+  forwardInSteps?: boolean;
+}) {
   const me = useMe();
   const canUpdate = hasPermission(me.data, 'application.update');
   const canReview = hasPermission(me.data, 'application.review');
@@ -434,11 +328,11 @@ export function TransitionCard({ app }: { app: Application }) {
   const [sendBackReason, setSendBackReason] = useState('');
   const [closeReason, setCloseReason] = useState('');
 
-  const showStart = app.status === 'DRAFT' && canUpdate;
-  const showReview = app.status === 'DOCUMENTS_PENDING' && canReview;
+  const showStart = app.status === 'DRAFT' && canUpdate && !forwardInSteps;
+  const showReview = app.status === 'DOCUMENTS_PENDING' && canReview && !forwardInSteps;
   const showCancel = ['DRAFT', 'DOCUMENTS_PENDING', 'UNDER_REVIEW'].includes(app.status) && canCancel;
   // T-APP-04: once the checklist is complete, the file is ready to go to a lender.
-  const showReady = app.status === 'UNDER_REVIEW' && canReview;
+  const showReady = app.status === 'UNDER_REVIEW' && canReview && !forwardInSteps;
   // T-APP-08: the customer withdraws before any lender has the file. A reason is required.
   const showWithdraw =
     ['DOCUMENTS_PENDING', 'UNDER_REVIEW', 'READY_FOR_SUBMISSION'].includes(app.status) && canWithdraw;

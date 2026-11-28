@@ -33,7 +33,7 @@ const MARK: Record<CheckState, { symbol: string; color: string; label: string }>
 };
 
 /** Everything the checklists need, read once for the file. A part the caller cannot read stays null ("not known"). */
-function useFileFacts(app: Application): FileFacts {
+export function useFileFacts(app: Application): FileFacts {
   const me = useMe();
   const parties = useLookup<Party>(`/v1/applications/${app.id}/parties`);
   const collateral = useLookup<CollateralView>(`/v1/applications/${app.id}/collateral`);
