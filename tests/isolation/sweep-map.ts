@@ -22,6 +22,7 @@ export const SEGMENT_TABLE: Record<string, string> = {
   branches: 'branch',
   calendars: 'business_calendar',
   clawbacks: 'adjustment',
+  collateral: 'application_collateral',
   'commission-calculations': 'commission_calculation',
   'commission-plans': 'commission_plan',
   complaints: 'complaint',

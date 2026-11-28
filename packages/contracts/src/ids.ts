@@ -139,6 +139,8 @@ export const ID_PREFIXES = [
   'invs',
   // P1-05 (migration 0130): credit-bureau report summary.
   'crp',
+  // P1-03 (migration 0111): application collateral.
+  'acol',
 ] as const;
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 
