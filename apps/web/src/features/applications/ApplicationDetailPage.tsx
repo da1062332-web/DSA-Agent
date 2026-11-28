@@ -29,7 +29,9 @@ import type { Application } from './ApplicationsPage';
 import { ChecklistCard } from '../documents/ChecklistCard';
 import { OwnersCard } from './ApplicationFileCards';
 import { CollateralCard } from './CollateralCard';
+import { StatusLinkCard } from './StatusLinkCard';
 import { EligibilityCard } from './EligibilityCard';
+
 import { UserName } from '../../shell/display';
 import { AppButton, FieldGrid } from '../../ui';
 import {
@@ -44,6 +46,7 @@ import { ApplicantsTab } from './file/ApplicantsTab';
 import { LoanFileHeader } from './file/LoanFileHeader';
 import { OverviewTab, Section } from './file/OverviewTab';
 import { StatusTimeline, type StatusHistoryEntry } from './file/StatusTimeline';
+import { LenderMatchesCard } from './LenderMatchesCard';
 import {
   CLOSABLE,
   STATUS_LABELS,
@@ -167,9 +170,12 @@ export function ApplicationDetailPage() {
             />
           )}
           {tab === 'lenders' && (
-            <div data-slot="application.lender-cases">
-              <LenderCasePanel applicationId={a.id} />
-            </div>
+            <>
+              <LenderMatchesCard applicationId={a.id} productCategory={a.productCategory} />
+              <div data-slot="application.lender-cases">
+                <LenderCasePanel applicationId={a.id} />
+              </div>
+            </>
           )}
           {tab === 'activity' && (
             <Stack spacing={3}>
@@ -187,6 +193,7 @@ export function ApplicationDetailPage() {
           data-testid="application.rail"
         >
           <PeopleCard app={a} />
+          <StatusLinkCard applicationId={a.id} />
           <HoldCard app={a} canHoldNow={canUpdate && canHold(a.status)} />
         </Stack>
       </Box>

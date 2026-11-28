@@ -128,7 +128,7 @@ export function LenderListPage() {
     try {
       setStatusUpdating(true);
       setStatusError(null);
-      await updateLender(selectedLender.id, selectedLender.lockVersion, {
+      await updateLender(selectedLender.id, selectedLender.version, {
         status: targetStatus,
       });
       setSuccessMsg(`Lender "${selectedLender.name}" status updated to ${targetStatus}.`);

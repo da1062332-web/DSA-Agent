@@ -1278,10 +1278,10 @@ export async function setupPersonaSession(
   // Seed localStorage if requested
   if (seedStorage) {
     await page.addInitScript(
-      ({ session }) => {
-        localStorage.setItem('sb-mlpkwwhnagxzinaohdxg-auth-token', JSON.stringify(session));
+      ({ session, keys }) => {
+        for (const key of keys) localStorage.setItem(key, JSON.stringify(session));
       },
-      { session: sessionData },
+      { session: sessionData, keys: authStorageKeys() },
     );
   }
 
@@ -1666,6 +1666,26 @@ export async function setupPersonaSession(
   });
 }
 
+/**
+ * Where supabase-js keeps the session: `sb-<first label of the host>-auth-token`. The label differs per
+ * environment, so a run against a local Supabase reads a different key than one against the hosted project —
+ * seeding only the hosted key leaves a local run sitting on the sign-in page. Every candidate is seeded: the
+ * app reads only the key matching its own VITE_SUPABASE_URL, and the spare entries are inert.
+ */
+export function authStorageKeys(): string[] {
+  const refs = ['mlpkwwhnagxzinaohdxg', '127', 'localhost'];
+  const configured = process.env.PLAYWRIGHT_SUPABASE_URL;
+  if (configured) {
+    try {
+      const label = new URL(configured).hostname.split('.')[0];
+      if (label && !refs.includes(label)) refs.push(label);
+    } catch {
+      // An unparseable override is ignored rather than failing the run.
+    }
+  }
+  return refs.map((ref) => `sb-${ref}-auth-token`);
+}
+
 export async function performRoleLogin(
   page: Page,
   persona: PersonaConfig,
@@ -1753,13 +1773,13 @@ export async function performRoleLogin(
       created_at: '2026-01-01T00:00:00.000Z',
     },
   };
-  await page.evaluate(({ session }) => {
-    localStorage.setItem('sb-mlpkwwhnagxzinaohdxg-auth-token', JSON.stringify(session));
+  await page.evaluate(({ session, keys }) => {
+    for (const key of keys) localStorage.setItem(key, JSON.stringify(session));
     localStorage.setItem('dsa_bypass_active', 'true');
     sessionStorage.setItem('dsa_bypass_active', 'true');
     sessionStorage.setItem('dsa_mfa_project', 'disabled');
     localStorage.setItem('dsa_mfa_project', 'disabled');
-  }, { session: activeSession });
+  }, { session: activeSession, keys: authStorageKeys() });
 
   // 5. Navigate cleanly to the target destination
   const isAlreadyAtTarget = (path: string) => {

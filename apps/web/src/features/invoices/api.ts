@@ -3,6 +3,7 @@ import { ApiError as SharedApiError, apiDownload, apiRequest, type ApiRequest } 
 import type {
   ConnectorStatement,
   CreateInvoiceInput,
+  GenerateLenderInvoiceInput,
   InvoiceRecord,
   UpdateInvoiceStatusInput,
 } from './types';
@@ -134,6 +135,23 @@ export async function getPortalConnectorStatements(
     { method: 'GET' },
   );
   return res.data;
+}
+
+/**
+ * P2-01: the month's commission invoice to one lender. The API sums the earned calculations itself and
+ * allocates the invoice number, so the browser sends only the lender and the month.
+ */
+export async function generateLenderCommissionInvoice(
+  input: GenerateLenderInvoiceInput,
+  idempotencyKey?: string,
+): Promise<{ invoice: InvoiceRecord; etag?: string }> {
+  const ik = idempotencyKey || (typeof crypto !== 'undefined' ? crypto.randomUUID() : undefined);
+  const res = await request<InvoiceRecord>('/v1/invoices/lender-commission', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    idempotencyKey: ik,
+  });
+  return { invoice: res.data, etag: res.etag };
 }
 
 /**
