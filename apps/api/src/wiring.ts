@@ -15,6 +15,7 @@ import { createNotificationSubscriber } from './modules/crm/notifications/event-
 import { createCommissionSubscriber } from './modules/finance/commission-subscriber';
 import { PostgresDataSharingPort } from './modules/compliance/data-sharing-port';
 import { createConsentPort, createPartyPort } from './modules/crm/customers/consent-port';
+import { createBorrowerFinancialsPort } from './modules/crm/customers/borrower-financials-port';
 import { createCompositeComplaintSubjectPort } from './modules/crm/leads/subject-port';
 import { createTaskPort } from './modules/crm/tasks/task-port';
 import { IntegrationRegistry } from './modules/integrations/integration-registry';
@@ -72,6 +73,8 @@ export function createProductionDeps(
     consentPort: createConsentPort(),
     // Applications created from a customer (API-APP-001) and added parties (API-APP-006) read the customer through it.
     partyPort: createPartyPort(),
+    // Lender matching clubs co-applicant income and reads EMIs, age, pincode and vintage from the customer profiles through it.
+    borrowerFinancialsPort: createBorrowerFinancialsPort(),
     complaintSubjectPort: createCompositeComplaintSubjectPort({
       application: createApplicationSubjectPort(),
     }),

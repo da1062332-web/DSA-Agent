@@ -20,6 +20,7 @@ import type { OpenAPIRegistry } from '@dsa/contracts/openapi';
 import { z, type ZodTypeAny } from 'zod';
 import { registerOperation } from '../../../http/openapi-op';
 import { ChecklistResponseSchema } from './checklist-schemas';
+import { StatusHistoryEntry } from './history';
 import { registerLenderMatchOpenApi } from './lender-matches-openapi';
 import { registerLenderPackOpenApi } from './lender-pack-openapi';
 import {
@@ -366,6 +367,20 @@ function registerPartyAndDocumentPaths(registry: OpenAPIRegistry, tag: string[])
         description:
           'VALIDATION_ERROR (customer already a party; party not on the application; relationshipToPrimary REQUIRED for a co-applicant, FAMILY_NEEDS_INDIVIDUALS, DIRECTOR_NEEDS_ENTITY, or a second SPOUSE)',
       },
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/v1/applications/{id}/status-history',
+    tags: tag,
+    operationId: 'API-APP-HIST-001',
+    summary:
+      'The status journey of the application, oldest first: every transition and roll-up with who, when and the recorded reason (application.read)',
+    responses: {
+      200: { description: 'Status history', content: json(listResponse(StatusHistoryEntry)) },
+      403: { description: 'FORBIDDEN' },
+      404: { description: 'NOT_FOUND (also another tenant or outside the caller scope)' },
     },
   });
 

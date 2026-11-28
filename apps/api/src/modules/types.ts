@@ -16,6 +16,7 @@ import type {
   KycCheckPort,
   OutboxPort,
   PartyPort,
+  BorrowerFinancialsPort,
   TaskPort,
   Tx,
   TxRunner,
@@ -62,6 +63,8 @@ export interface ApiDeps {
   customerRepository?: unknown;
   taskRepository?: unknown;
   partyPort?: PartyPort;
+  /** Profile figures of the borrowers on a file, for eligibility and lender matching (2026-11-28). */
+  borrowerFinancialsPort?: BorrowerFinancialsPort;
   sanctionRepository?: unknown;
   apiKeyStore?: unknown;
   partnerService?: unknown;

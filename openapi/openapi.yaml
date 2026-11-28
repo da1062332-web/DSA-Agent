@@ -26502,6 +26502,9 @@ paths:
                           - APPLICATION
                           - FINANCIAL_INPUT
                           - ENTERED
+                          - CUSTOMER_PROFILE
+                          - CO_APPLICANTS
+                          - COLLATERAL
                       tenureMonths: *a108
                       monthlyIncome: *a108
                       monthlyObligations: *a108
@@ -26512,6 +26515,71 @@ paths:
                       employmentType: *a108
                       constitution: *a108
                       vintageMonths: *a108
+                  borrowers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        customerId:
+                          type: string
+                        role:
+                          type: string
+                          enum:
+                            - PRIMARY
+                            - CO_APPLICANT
+                            - GUARANTOR
+                        relationshipToPrimary:
+                          type:
+                            - string
+                            - "null"
+                        monthlyIncome:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        incomeSource:
+                          type:
+                            - string
+                            - "null"
+                          enum:
+                            - FINANCIAL_INPUT
+                            - CUSTOMER_PROFILE
+                        monthlyObligations:
+                          type:
+                            - object
+                            - "null"
+                          properties:
+                            amount:
+                              type: string
+                              pattern: ^\d{1,16}\.\d{2}$
+                            currency:
+                              type: string
+                              pattern: ^[A-Z]{3}$
+                          required:
+                            - amount
+                            - currency
+                        counted:
+                          type: boolean
+                      required:
+                        - customerId
+                        - role
+                        - relationshipToPrimary
+                        - monthlyIncome
+                        - incomeSource
+                        - monthlyObligations
+                        - counted
+                  collateralItems:
+                    type: integer
+                    minimum: 0
                 required:
                   - applicationId
                   - inputs
@@ -30018,6 +30086,84 @@ paths:
           description: VERSION_CONFLICT or INVALID_STATE (with a lender already, or removing the PRIMARY party)
         "422":
           description: VALIDATION_ERROR (customer already a party; party not on the application; relationshipToPrimary REQUIRED for a co-applicant, FAMILY_NEEDS_INDIVIDUALS, DIRECTOR_NEEDS_ENTITY, or a second SPOUSE)
+  /v1/applications/{id}/status-history:
+    get:
+      tags: *a114
+      operationId: API-APP-HIST-001
+      summary: "The status journey of the application, oldest first: every transition and roll-up with who, when and the recorded reason (application.read)"
+      responses:
+        "200":
+          description: Status history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        fromStatus:
+                          type:
+                            - string
+                            - "null"
+                        toStatus:
+                          type: string
+                        fromSubStatus:
+                          type:
+                            - string
+                            - "null"
+                        toSubStatus:
+                          type:
+                            - string
+                            - "null"
+                        transitionCode:
+                          type: string
+                        reason:
+                          type:
+                            - string
+                            - "null"
+                        actorId:
+                          type: string
+                        causedByLenderCaseId:
+                          type:
+                            - string
+                            - "null"
+                        occurredAt:
+                          type: string
+                      required:
+                        - id
+                        - fromStatus
+                        - toStatus
+                        - fromSubStatus
+                        - toSubStatus
+                        - transitionCode
+                        - reason
+                        - actorId
+                        - causedByLenderCaseId
+                        - occurredAt
+                  meta:
+                    type: object
+                    properties:
+                      nextCursor:
+                        type:
+                          - string
+                          - "null"
+                      limit:
+                        type: integer
+                    required:
+                      - nextCursor
+                      - limit
+                required:
+                  - data
+                  - meta
+        "403":
+          description: FORBIDDEN
+        "404":
+          description: NOT_FOUND (also another tenant or outside the caller scope)
   /v1/applications/{id}/collateral:
     get:
       tags: *a114
@@ -46637,6 +46783,259 @@ paths:
       summary: GET /v1/timeline
       tags:
         - MOD-ACT Activities
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/customers/search:
+    post:
+      operationId: CUST-POST-CUSTOMERS-SEARCH
+      summary: Find active customers by a 10-digit mobile (exact, keyed hash) or part of the name, inside the caller scope; masked results, no-store. The term is in the body so it never reaches a URL (customer.read)
+      tags:
+        - MOD-CUST Customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                partyType:
+                  type: string
+                  enum: *a44
+                excludeIds:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 3
+                    maxLength: 64
+                  maxItems: 50
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 50
+                  default: 20
+              required:
+                - query
+              additionalProperties: false
       responses:
         "200":
           description: Success

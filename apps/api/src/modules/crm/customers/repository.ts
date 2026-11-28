@@ -88,6 +88,11 @@ export interface CustomerListParams {
   allowedTeamUserIds?: string[];
   allowedOwnUserId?: string | null;
   isTenantWide?: boolean;
+  /** Part of the name, matched case-insensitively anywhere in it (search). */
+  nameContains?: string;
+  /** Keyed hashes of one mobile number; a customer matches when its MOBILE contact point has one of them (search). */
+  mobileHashes?: Buffer[];
+  excludeIds?: string[];
   limit: number;
   cursor?: string;
 }
@@ -248,6 +253,19 @@ export class SqlCustomerRepository implements CustomerRepository {
         ${params.partyType ? sql`AND party_type = ${params.partyType}` : sql``}
         ${params.homeBranchId ? sql`AND home_branch_id = ${params.homeBranchId}` : sql``}
         ${params.status ? sql`AND status = ${params.status}` : sql``}
+        ${
+          params.nameContains
+            ? sql`AND full_name ILIKE ${`%${params.nameContains.replace(/[\\%_]/g, (c) => `\\${c}`)}%`} ESCAPE '\\'`
+            : sql``
+        }
+        ${
+          params.mobileHashes && params.mobileHashes.length > 0
+            ? sql`AND EXISTS (SELECT 1 FROM customer_contact_point cp
+                               WHERE cp.tenant_id = customer.tenant_id AND cp.customer_id = customer.id
+                                 AND cp.kind = 'MOBILE' AND cp.value_hash = ANY(${params.mobileHashes}))`
+            : sql``
+        }
+        ${params.excludeIds && params.excludeIds.length > 0 ? sql`AND NOT (id = ANY(${params.excludeIds}))` : sql``}
         ${
           !params.isTenantWide
             ? sql`AND (

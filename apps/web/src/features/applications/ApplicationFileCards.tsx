@@ -1,9 +1,10 @@
 // Cards on /applications/:id for the rest of the loan file (owner: Dev 3; DSA Notion MODULE 16 and 20):
 //   PartiesCard     API-APP-006 / 006-LIST  co-applicants and guarantors (application.update); P1-03: a co-applicant names their
-//                   relationship (only those that fit the primary applicant are offered), and a new customer can be created inline
+//                   relationship (only those that fit the primary applicant are offered), and a new customer can be created inline.
+//                   2026-11-28: the customer is found by mobile or name (POST /v1/customers/search), never picked from the whole list.
 //   OwnersCard      API-APP-011             sales owner and operations owner (application.assign)
 // Each card shows only what the caller's permissions and the application's status allow (rules.ts); the API re-checks everything.
-import { relationshipsForPrimary, type PartyRelationship } from '@dsa/contracts';
+import { partyRelationshipIssue, relationshipsForPrimary, type PartyRelationship } from '@dsa/contracts';
 import {
   Card,
   CardContent,
@@ -19,12 +20,14 @@ import {
 import { useState } from 'react';
 import { hasPermission, useMe } from '../../api/useMe';
 import { CustomerName, UserName } from '../../shell/display';
-import { CustomerSelect, UserSelect } from '../../shell/selectors';
+import { UserSelect } from '../../shell/selectors';
 import { AppButton, FieldGrid } from '../../ui';
 import { useCommand, useLookup } from '../admin/api';
 import { isValidMobile } from '../leads/validation';
 import { ErrorAlert } from '../admin/components';
 import type { Application } from './ApplicationsPage';
+import { CustomerSearchField, type FoundCustomer } from './CustomerSearchField';
+import { isMobileTerm } from './customer-search';
 import {
   canAssignOwners,
   canChangeParties,
@@ -54,10 +57,12 @@ export function PartiesCard({ app }: { app: Application }) {
   const me = useMe();
   const canEdit = hasPermission(me.data, 'application.update') && canChangeParties(app.status);
   const parties = useLookup<Party>(`/v1/applications/${app.id}/parties`);
-  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customer, setCustomer] = useState<FoundCustomer | null>(null);
+  const customerId = customer?.id ?? null;
   const [role, setRole] = useState<'CO_APPLICANT' | 'GUARANTOR'>('CO_APPLICANT');
   const [relationship, setRelationship] = useState<PartyRelationship | ''>('');
-  const [creating, setCreating] = useState(false);
+  /** null: closed; a string: open, pre-filled with what was typed in the search. */
+  const [creating, setCreating] = useState<string | null>(null);
   const canCreateCustomer = hasPermission(me.data, 'customer.create');
 
   const change = useCommand<
@@ -80,7 +85,17 @@ export function PartiesCard({ app }: { app: Application }) {
 
   const current = (parties.data ?? []).filter((p) => p.removedAt === null);
   const primaryType = current.find((p) => p.role === 'PRIMARY')?.partyType ?? 'INDIVIDUAL';
-  const relationships = relationshipsForPrimary(primaryType);
+  // With the person chosen, offer only what fits both party types (a company cannot be a spouse).
+  const relationships = relationshipsForPrimary(primaryType).filter(
+    (r) =>
+      !customer ||
+      partyRelationshipIssue({
+        role,
+        relationship: r,
+        primaryPartyType: primaryType,
+        partyType: customer.partyType,
+      }) === null,
+  );
   // The API refuses a co-applicant without a relationship (422 REQUIRED); a guarantor may leave it out.
   const relationshipMissing = role === 'CO_APPLICANT' && !relationship;
   return (
@@ -128,20 +143,25 @@ export function PartiesCard({ app }: { app: Application }) {
         {canEdit && (
           <FieldGrid minColumnWidth={220} spanNonFields>
             <Stack direction="row" spacing={1} alignItems="flex-start">
-              <CustomerSelect
-                value={customerId}
-                onChange={setCustomerId}
-                label="Customer to add"
-                data-testid="application.party-customer"
+              <CustomerSearchField
+                value={customer}
+                onChange={(c) => {
+                  setCustomer(c);
+                  setRelationship('');
+                }}
+                excludeIds={current.map((p) => p.customerId)}
+                onCreateNew={canCreateCustomer ? (typed) => setCreating(typed) : undefined}
+                dataTestId="application.party-customer"
               />
               {canCreateCustomer && (
                 <AppButton
                   size="small"
                   variant="ghost"
                   dataTestId="application.party-new-customer"
-                  onClick={() => setCreating(true)}
+                  onClick={() => setCreating('')}
+                  sx={{ whiteSpace: 'nowrap' }}
                 >
-                  New
+                  New customer
                 </AppButton>
               )}
             </Stack>
@@ -189,7 +209,7 @@ export function PartiesCard({ app }: { app: Application }) {
                     },
                     {
                       onSuccess: () => {
-                        setCustomerId(null);
+                        setCustomer(null);
                         setRelationship('');
                       },
                     },
@@ -206,13 +226,14 @@ export function PartiesCard({ app }: { app: Application }) {
             Parties can change while the application is Draft, Documents pending or Under review.
           </Typography>
         )}
-        {creating && (
+        {creating !== null && (
           <QuickCustomerDialog
             branchId={app.branchId}
-            onClose={() => setCreating(false)}
-            onCreated={(id) => {
-              setCustomerId(id);
-              setCreating(false);
+            typed={creating}
+            onClose={() => setCreating(null)}
+            onCreated={(c) => {
+              setCustomer(c);
+              setCreating(null);
             }}
           />
         )}
@@ -231,17 +252,20 @@ interface NewCustomerBody {
 /** Creates a customer (API-CUST-001, customer.create) in the application's branch and hands its id back to the parties card. */
 function QuickCustomerDialog({
   branchId,
+  typed,
   onClose,
   onCreated,
 }: {
   branchId: string;
+  /** What was typed in the search: a mobile goes to the mobile field, anything else to the name. */
+  typed: string;
   onClose: () => void;
-  onCreated: (customerId: string) => void;
+  onCreated: (customer: FoundCustomer) => void;
 }) {
   const [partyType, setPartyType] = useState<NewCustomerBody['partyType']>('INDIVIDUAL');
-  const [fullName, setFullName] = useState('');
-  const [mobile, setMobile] = useState('');
-  const create = useCommand<NewCustomerBody, { id: string }>(
+  const [fullName, setFullName] = useState(isMobileTerm(typed) ? '' : typed);
+  const [mobile, setMobile] = useState(isMobileTerm(typed) ? typed : '');
+  const create = useCommand<NewCustomerBody, FoundCustomer>(
     () => ({ path: '/v1/customers', method: 'POST' }),
     [['/v1/customers']],
     'Customer created.',
@@ -308,7 +332,7 @@ function QuickCustomerDialog({
                 homeBranchId: branchId,
                 ...(mobile.trim() ? { primaryMobile: mobile.trim() } : {}),
               },
-              { onSuccess: (c) => onCreated(c.id) },
+              { onSuccess: (c) => onCreated({ ...c, fullName: c.fullName ?? name, partyType }) },
             )
           }
         >
