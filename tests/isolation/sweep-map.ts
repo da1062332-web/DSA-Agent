@@ -66,6 +66,7 @@ export const SEGMENT_TABLE: Record<string, string> = {
   'rule-simulations': 'rule_simulation',
   'rule-test-cases': 'rule_test_case',
   sanctions: 'sanction',
+  slabs: 'commission_plan_slab',
   shares: 'external_share',
   subscriptions: 'webhook_subscription',
   'support-access-requests': 'support_access_grant',
