@@ -9,13 +9,16 @@ import { AppCard } from '../../ui';
 export function StatusLinkCard({ applicationId }: { applicationId: string }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [reference, setReference] = useState<string | null>(null);
 
   const share = async () => {
     setBusy(true);
     try {
-      const res = await apiFetch<{ url: string; expiresAt: string }>(`/v1/applications/${applicationId}/status-link`, {
-        method: 'POST',
-      });
+      const res = await apiFetch<{ url: string; expiresAt: string; reference: string }>(
+        `/v1/applications/${applicationId}/status-link`,
+        { method: 'POST' },
+      );
+      setReference(res.reference);
       const link = `${window.location.origin}${res.url}`;
       await navigator.clipboard.writeText(link);
       toast.success('Status link copied. It works for seven days.');
@@ -46,6 +49,11 @@ export function StatusLinkCard({ applicationId }: { applicationId: string }) {
       <Typography variant="body2" color="text.secondary">
         The link expires after seven days. Create a new one to extend it.
       </Typography>
+      {reference && (
+        <Typography variant="body2" sx={{ mt: 1 }} data-testid="application.status-reference">
+          Customer reference: <strong>{reference}</strong>
+        </Typography>
+      )}
     </AppCard>
   );
 }
