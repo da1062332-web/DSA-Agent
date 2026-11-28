@@ -155,6 +155,30 @@ describe('P1-06 run a check on screen: a result', () => {
     expect(calls).toHaveLength(1);
   });
 
+  it('P1-06 a lead id under "Customer" sends nothing and makes no key; choosing "Lead" then sends it', async () => {
+    const { session, calls, newKey } = setup(record());
+    session.setField('subjectId', 'lead_01M8DS9KFG4FGQPBQ1D4Z12X3S');
+    session.setField('consentRecordId', CONSENT);
+    session.setField('idNumber', PAN);
+
+    await session.submit();
+
+    expect(phase(session)).toBe('editing');
+    expect(session.getState().fieldErrors.subjectId).toContain('This looks like a lead id. Choose "Lead"');
+    expect(calls).toHaveLength(0);
+    expect(newKey).not.toHaveBeenCalled();
+
+    session.setField('subjectType', 'LEAD');
+    await session.submit();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.body).toMatchObject({
+      subjectType: 'LEAD',
+      subjectId: 'lead_01M8DS9KFG4FGQPBQ1D4Z12X3S',
+    });
+    expect(newKey).toHaveBeenCalledTimes(1);
+  });
+
   it('P1-06 a bad bank form (8-digit account, bad IFSC) sends nothing', async () => {
     const { session, calls } = setup(bankRecord('VERIFIED'));
     fillBank(session);

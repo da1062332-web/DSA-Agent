@@ -47,6 +47,10 @@ export const DOMAIN_EVENT_TYPES = [
   'sanction.expired',
   'disbursement.recorded',
   'disbursement.verified',
+  // Added 2026-11-28 (P1-03; Contracts §15): property collateral on an application.
+  'application.collateral_added',
+  'application.collateral_updated',
+  'application.collateral_removed',
 ] as const;
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
 

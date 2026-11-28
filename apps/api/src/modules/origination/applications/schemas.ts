@@ -1,6 +1,6 @@
 // Request and response schemas for MOD-APP Loan Applications (owner: Dev 3; DSA Notion MODULE 16). Money is a decimal
 // string (Contracts §5). Scope is applied by the handlers, not here.
-import { IdSchema, freeTextNoS3 } from '@dsa/contracts';
+import { IdSchema, PARTY_RELATIONSHIPS, freeTextNoS3 } from '@dsa/contracts';
 import { z } from 'zod';
 
 // Free text rejects PAN, Aadhaar and 9–18-digit account-like numbers (Contracts §12, S3 out of MVP).
@@ -215,9 +215,8 @@ export const ApplicationPartyChange = z.discriminatedUnion('action', [
       action: z.literal('ADD'),
       customerId: z.string().trim().min(3).max(64),
       role: z.enum(['CO_APPLICANT', 'GUARANTOR']),
-      relationshipToPrimary: z
-        .enum(['SPOUSE', 'PARENT', 'CHILD', 'SIBLING', 'PARTNER', 'DIRECTOR', 'OTHER'])
-        .optional(),
+      // Required for a co-applicant and checked against both party types in the handler (P1-03, partyRelationshipIssue).
+      relationshipToPrimary: z.enum(PARTY_RELATIONSHIPS).optional(),
     })
     .strict(),
   z.object({ action: z.literal('REMOVE'), partyId: z.string().trim().min(3).max(64) }).strict(),
