@@ -322,10 +322,31 @@ export class SanctionService {
     sanctionId: string,
     req: RecordTrancheRequest,
   ): Promise<{ tranche: DisbursementTrancheDto; remainingSanctionAmount: number }> {
+    return this.txRunner.withTenantTx(ctx, async (tx: Tx) =>
+      this.recordTrancheInTx(tx, ctx, sanctionId, req),
+    );
+  }
+
+  /**
+   * The body of recordTranche, running in a transaction the caller already owns. Split out for P1-07: the MIS import
+   * records tranches from a bank's sheet inside the import batch's own transaction, and opening a second one here
+   * would take another pooled connection — not atomic with the batch, and able to deadlock against the row locks the
+   * batch already holds.
+   *
+   * The disbursement.record check lives here rather than in the callers, so no entry point can reach the insert
+   * without it. Recording a disbursement is a different authority from moving a status: a person who may run an
+   * import is not thereby allowed to create disbursement records, and the importer turns the refusal into an
+   * exception row naming the missing permission.
+   */
+  async recordTrancheInTx(
+    tx: Tx,
+    ctx: RequestContext,
+    sanctionId: string,
+    req: RecordTrancheRequest,
+  ): Promise<{ tranche: DisbursementTrancheDto; remainingSanctionAmount: number }> {
     this.checkPermission(ctx, 'disbursement.record');
     const tenantId = ctx.principal.tenantId;
-
-    return this.txRunner.withTenantTx(ctx, async (tx: Tx) => {
+    {
       const sanction = await this.repo.findSanctionById(tx, tenantId, sanctionId);
       if (!sanction) {
         throw AppError.of('NOT_FOUND', `Sanction ${sanctionId} not found`);
@@ -447,7 +468,7 @@ export class SanctionService {
         tranche: toTrancheDto(created),
         remainingSanctionAmount: remainingAfter,
       };
-    });
+    }
   }
 
   async getTranche(ctx: RequestContext, id: string): Promise<DisbursementTrancheDto> {

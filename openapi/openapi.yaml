@@ -77722,6 +77722,7 @@ paths:
                   enum:
                     - LEAD
                     - CUSTOMER
+                    - LENDER_CASE_STATUS
                 fileFormat:
                   type: string
                   enum:
@@ -79149,6 +79150,498 @@ paths:
           required: true
           name: id
           in: path
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+  /v1/lenders/{lenderId}/mis-mapping:
+    get:
+      operationId: IMP-GET-LENDERS-BY-ID-MIS-MAPPING
+      summary: GET /v1/lenders/:lenderId/mis-mapping
+      tags:
+        - MOD-IMP Import and Export
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: lenderId
+          in: path
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "403":
+          description: Missing permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "404":
+          description: Not found, or outside the caller tenant or scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "409":
+          description: Conflict (version, state or idempotency)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                      message:
+                        type: string
+                      httpStatus:
+                        type: integer
+                      correlationId:
+                        type: string
+                      details:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                            issue:
+                              type: string
+                            meta:
+                              type: object
+                              additionalProperties: {}
+                          required:
+                            - issue
+                      retryable:
+                        type: boolean
+                    required:
+                      - code
+                      - message
+                      - httpStatus
+                      - correlationId
+                      - retryable
+                required:
+                  - error
+    put:
+      operationId: IMP-PUT-LENDERS-BY-ID-MIS-MAPPING
+      summary: PUT /v1/lenders/:lenderId/mis-mapping
+      tags:
+        - MOD-IMP Import and Export
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: lenderId
+          in: path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                columnMap:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    enum:
+                      - lenderReference
+                      - status
+                      - reasonText
+                      - disbursedAmount
+                      - disbursedOn
+                statusMap:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    enum: *a134
+                dateFormat:
+                  type: string
+                  enum:
+                    - DD-MM-YYYY
+                    - DD/MM/YYYY
+                    - YYYY-MM-DD
+                    - DD-MMM-YYYY
+                  default: DD-MM-YYYY
+              required:
+                - columnMap
+                - statusMap
       responses:
         "200":
           description: Success

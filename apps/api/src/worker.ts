@@ -25,6 +25,10 @@ import {
 import {
 } from './modules/origination/applications/documents';
 import { globalJobQueue } from './modules/platform/job-queue';
+import {
+  LENDER_CASE_STALENESS_JOB,
+  createStalenessJobHandler,
+} from './modules/origination/lender-cases/staleness-job';
 
 // Remove provisioning secrets from memory
 scrubProvisioningSecrets();
@@ -70,6 +74,10 @@ const deps = createProductionDeps(txRunner, {
 });
 globalJobQueue.registerHandler(USER_TRANSFER_JOB, createUserTransferHandler(deps));
 globalJobQueue.registerHandler(WEBHOOK_DELIVERY_JOB, createWebhookDeliveryHandler(deps));
+// P1-07: the daily sweep for lender cases nobody has heard about in a week. The handler books its own next run, so
+// registering it here is all the worker does; the first run is booked by the first lender status import that
+// commits for a tenant (ensureStalenessJobScheduled), which keeps the worker out of enumerating tenants.
+globalJobQueue.registerHandler(LENDER_CASE_STALENESS_JOB, createStalenessJobHandler(deps));
 
 void checkDatabase(db, config.DATABASE_URL).then((status) => {
   if (!status.connected) {

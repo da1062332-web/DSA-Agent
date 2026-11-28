@@ -89,17 +89,20 @@ export class ImportRepository {
       status: ImportBatchStatus;
       preview_data: Record<string, unknown>[];
       total_rows: number;
+      import_options?: Record<string, unknown>;
     },
   ): Promise<ImportBatchRow> {
     const result = await sql<ImportBatchRow>`
       INSERT INTO import_batch (
         id, tenant_id, requester_id, target_entity, source_file_key, file_format,
-        file_size_bytes, checksum_sha256, idempotency_key, status, preview_data, total_rows
+        file_size_bytes, checksum_sha256, idempotency_key, status, preview_data, total_rows,
+        import_options
       ) VALUES (
         ${batch.id}, ${batch.tenant_id}, ${batch.requester_id}, ${batch.target_entity},
         ${batch.source_file_key}, ${batch.file_format}, ${batch.file_size_bytes},
         ${batch.checksum_sha256}, ${batch.idempotency_key ?? null}, ${batch.status},
-        ${JSON.stringify(batch.preview_data)}::jsonb, ${batch.total_rows}
+        ${JSON.stringify(batch.preview_data)}::jsonb, ${batch.total_rows},
+        ${JSON.stringify(batch.import_options ?? {})}::jsonb
       )
       RETURNING *
     `.execute(tx);
@@ -269,6 +272,7 @@ export class InMemoryImportRepository extends ImportRepository {
       status: ImportBatchStatus;
       preview_data: Record<string, unknown>[];
       total_rows: number;
+      import_options?: Record<string, unknown>;
     },
   ): Promise<ImportBatchRow> {
     const now = new Date();
@@ -283,7 +287,7 @@ export class InMemoryImportRepository extends ImportRepository {
       checksum_sha256: batch.checksum_sha256,
       idempotency_key: batch.idempotency_key ?? null,
       column_mapping: {},
-      import_options: {},
+      import_options: batch.import_options ?? {},
       status: batch.status,
       total_rows: batch.total_rows,
       valid_rows: 0,

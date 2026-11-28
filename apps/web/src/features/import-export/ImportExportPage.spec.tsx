@@ -88,6 +88,10 @@ vi.mock('./api', () => ({
   useCommitImport: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRollbackImport: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateExportJob: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  // P1-07: the mapping editor only renders for the lender case status target, which these two tests do not select,
+  // but the hook is called on every render, so the mock has to carry it.
+  useLenderMisMapping: () => ({ data: null, isLoading: false }),
+  useSaveLenderMisMapping: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe('CMP-IMP.01.1 — ImportExportPage Frontend Component', () => {

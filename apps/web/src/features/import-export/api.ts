@@ -9,7 +9,7 @@ import type {
   RollbackImportDto,
 } from '@dsa/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../api/client';
+import { apiFetch, ApiError } from '../../api/client';
 
 export function useImportBatches() {
   return useQuery({
@@ -118,6 +118,68 @@ export function useCreateExportJob() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['exports'] });
+    },
+  });
+}
+
+// ============================================================
+// P1-07: the lender's saved MIS sheet mapping
+// ============================================================
+
+export interface LenderMisMapping {
+  id: string;
+  lenderId: string;
+  columnMap: Record<string, string>;
+  statusMap: Record<string, string>;
+  dateFormat: string;
+  version: number;
+  lastImportAt: string | null;
+  lockVersion: number;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface SaveLenderMisMappingInput {
+  columnMap: Record<string, string>;
+  statusMap: Record<string, string>;
+  dateFormat: string;
+}
+
+/** Null when the lender has no mapping yet, which is a different thing from an empty one. */
+export async function fetchLenderMisMapping(lenderId: string): Promise<LenderMisMapping | null> {
+  try {
+    return await apiFetch<LenderMisMapping>(`/v1/lenders/${encodeURIComponent(lenderId)}/mis-mapping`);
+  } catch (err) {
+    if (err instanceof ApiError && err.httpStatus === 404) return null;
+    throw err;
+  }
+}
+
+export async function saveLenderMisMapping(
+  lenderId: string,
+  input: SaveLenderMisMappingInput,
+): Promise<LenderMisMapping> {
+  return apiFetch<LenderMisMapping>(`/v1/lenders/${encodeURIComponent(lenderId)}/mis-mapping`, {
+    method: 'PUT',
+    body: input,
+  });
+}
+
+export function useLenderMisMapping(lenderId: string | null) {
+  return useQuery({
+    queryKey: ['lender-mis-mapping', lenderId],
+    queryFn: () => fetchLenderMisMapping(lenderId!),
+    enabled: Boolean(lenderId),
+  });
+}
+
+export function useSaveLenderMisMapping() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ lenderId, input }: { lenderId: string; input: SaveLenderMisMappingInput }) =>
+      saveLenderMisMapping(lenderId, input),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['lender-mis-mapping', vars.lenderId] });
     },
   });
 }

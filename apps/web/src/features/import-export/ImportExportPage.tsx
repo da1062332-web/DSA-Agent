@@ -42,8 +42,11 @@ import {
   useCreateImport,
   useExportJobs,
   useImportBatches,
+  useLenderMisMapping,
   useRollbackImport,
 } from './api';
+import { LenderSelect } from '../../shell/selectors';
+import { MisMappingEditor } from './MisMappingEditor';
 import { RowAction } from '../../shell/RowAction';
 
 export function ImportExportPage() {
@@ -51,6 +54,12 @@ export function ImportExportPage() {
 
   // Import State
   const [targetEntity, setTargetEntity] = useState<TargetEntityType>('LEAD');
+  // P1-07: a bank's status sheet belongs to one lender, and it is read with that lender's saved mapping.
+  const [misLenderId, setMisLenderId] = useState<string | null>(null);
+  const isStatusImport = targetEntity === 'LENDER_CASE_STATUS';
+  const { data: misMapping, isLoading: loadingMisMapping } = useLenderMisMapping(
+    isStatusImport ? misLenderId : null,
+  );
   const [fileContentBase64, setFileContentBase64] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const [selectedBatch, setSelectedBatch] = useState<ImportBatch | null>(null);
@@ -101,6 +110,9 @@ export function ImportExportPage() {
         fileFormat: fileName.endsWith('.xlsx') ? 'XLSX' : 'CSV',
         filename: fileName,
         contentBase64: fileContentBase64,
+        // Which bank's sheet this is. The commit refuses a status batch without it, because the mapping that reads
+        // the sheet is the lender's.
+        ...(isStatusImport && misLenderId ? { importOptions: { lenderId: misLenderId } } : {}),
       });
 
       setSelectedBatch(batch);
@@ -234,6 +246,7 @@ export function ImportExportPage() {
                       >
                         <MenuItem value="LEAD">Leads (ENT-020)</MenuItem>
                         <MenuItem value="CUSTOMER">Customers (ENT-025)</MenuItem>
+                        <MenuItem value="LENDER_CASE_STATUS">Lender case status (daily bank sheet)</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
@@ -243,6 +256,18 @@ export function ImportExportPage() {
                       <input type="file" accept=".csv,.xlsx" hidden onChange={handleFileUpload} />
                     </Button>
                   </Grid>
+                  {isStatusImport && (
+                    <Grid item xs={12}>
+                      <LenderSelect
+                        label="Lender whose sheet this is"
+                        value={misLenderId}
+                        onChange={setMisLenderId}
+                        required
+                        data-testid="import.mis-lender"
+                        helperText="Each bank words its stages differently, so the sheet is read with that lender's saved mapping."
+                      />
+                    </Grid>
+                  )}
                 </Grid>
 
                 <Alert severity="info" sx={{ mb: 2 }}>
@@ -250,10 +275,22 @@ export function ImportExportPage() {
                   retained for 7 days.
                 </Alert>
 
+                {isStatusImport && misLenderId && !loadingMisMapping && !misMapping && (
+                  <Alert severity="warning" sx={{ mb: 2 }} data-testid="import.mis-no-mapping">
+                    This lender has no saved mapping yet. Save one below first — without the bank&apos;s stage words
+                    every row would be an exception.
+                  </Alert>
+                )}
+
                 <Can action="import.run">
                   <Button
                     variant="contained"
-                    disabled={!fileContentBase64 || createImportMutation.isPending}
+                    data-testid="import.upload"
+                    disabled={
+                      !fileContentBase64 ||
+                      createImportMutation.isPending ||
+                      (isStatusImport && (!misLenderId || !misMapping))
+                    }
                     onClick={handleCreateBatch}
                   >
                     {createImportMutation.isPending ? <CircularProgress size={20} /> : 'Upload & Parse Headers'}
@@ -261,6 +298,10 @@ export function ImportExportPage() {
                 </Can>
               </CardContent>
             </Card>
+
+            {isStatusImport && (
+              <MisMappingEditor lenderId={misLenderId} mapping={misMapping ?? null} />
+            )}
 
             {/* Step 2: Column Mapping */}
             {selectedBatch && (
@@ -273,8 +314,10 @@ export function ImportExportPage() {
                   </Box>
 
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Map CSV header columns to target {selectedBatch.targetEntity} fields. Required fields:
-                    Full Name, Mobile.
+                    Map CSV header columns to target {selectedBatch.targetEntity} fields. Required fields:{' '}
+                    {selectedBatch.targetEntity === 'LENDER_CASE_STATUS'
+                      ? 'Lender reference, Stage.'
+                      : 'Full Name, Mobile.'}
                   </Typography>
 
                   {selectedBatch.previewData && selectedBatch.previewData.length > 0 && (
@@ -298,11 +341,41 @@ export function ImportExportPage() {
                               <MenuItem value="">
                                 <em>-- Ignore Column --</em>
                               </MenuItem>
-                              <MenuItem value="fullName">Full Name (Required)</MenuItem>
-                              <MenuItem value="mobile">Mobile Number (Required)</MenuItem>
-                              <MenuItem value="email">Email Address</MenuItem>
-                              <MenuItem value="productCategory">Product Category</MenuItem>
-                              <MenuItem value="indicativeAmount">Indicative Amount</MenuItem>
+                              {selectedBatch.targetEntity === 'LENDER_CASE_STATUS'
+                                ? [
+                                    <MenuItem key="ref" value="lenderReference">
+                                      Lender reference (Required)
+                                    </MenuItem>,
+                                    <MenuItem key="st" value="status">
+                                      Stage (Required)
+                                    </MenuItem>,
+                                    <MenuItem key="rt" value="reasonText">
+                                      Remarks
+                                    </MenuItem>,
+                                    <MenuItem key="amt" value="disbursedAmount">
+                                      Disbursed amount
+                                    </MenuItem>,
+                                    <MenuItem key="dt" value="disbursedOn">
+                                      Disbursed on
+                                    </MenuItem>,
+                                  ]
+                                : [
+                                    <MenuItem key="fn" value="fullName">
+                                      Full Name (Required)
+                                    </MenuItem>,
+                                    <MenuItem key="mo" value="mobile">
+                                      Mobile Number (Required)
+                                    </MenuItem>,
+                                    <MenuItem key="em" value="email">
+                                      Email Address
+                                    </MenuItem>,
+                                    <MenuItem key="pc" value="productCategory">
+                                      Product Category
+                                    </MenuItem>,
+                                    <MenuItem key="ia" value="indicativeAmount">
+                                      Indicative Amount
+                                    </MenuItem>,
+                                  ]}
                             </Select>
                           ),
                         },

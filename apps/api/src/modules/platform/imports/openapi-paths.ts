@@ -6,6 +6,7 @@ import {
   ConfigureMappingSchema,
   CreateImportSchema,
   RollbackImportSchema,
+  SaveLenderMisMappingInputSchema,
 } from '@dsa/contracts';
 import { registerOperation } from '../../../http/openapi-op';
 
@@ -66,5 +67,22 @@ export function registerPaths(registry: OpenAPIRegistry): void {
     operationId: 'IMP-GET-IMPORTS',
     summary: 'GET /v1/imports',
     tag,
+  });
+  // P1-07 / TASK-140: the lender's saved MIS sheet mapping. Registered here so the tenant-isolation sweep covers
+  // both from the day they ship; lenderId resolves through the 'lenders' segment in tests/isolation/sweep-map.ts.
+  registerOperation(registry, {
+    method: 'get',
+    path: '/v1/lenders/:lenderId/mis-mapping',
+    operationId: 'IMP-GET-LENDERS-BY-ID-MIS-MAPPING',
+    summary: 'GET /v1/lenders/:lenderId/mis-mapping',
+    tag,
+  });
+  registerOperation(registry, {
+    method: 'put',
+    path: '/v1/lenders/:lenderId/mis-mapping',
+    operationId: 'IMP-PUT-LENDERS-BY-ID-MIS-MAPPING',
+    summary: 'PUT /v1/lenders/:lenderId/mis-mapping',
+    tag,
+    body: SaveLenderMisMappingInputSchema,
   });
 }
